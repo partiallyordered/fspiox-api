@@ -7,10 +7,11 @@
 use serde::{Serialize, Deserialize};
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
+pub use rust_decimal::Decimal;
 
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
-pub type Amount = String;
+pub type Amount = Decimal;
 
 // ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
 pub type CorrelationId = Uuid;
@@ -216,19 +217,19 @@ pub struct TransfersPostRequest {
     // TODO: handle extensionList
 }
 
-    // pattern: ^[A-Za-z0-9-_]{43}$
-    // but..
-    // maxLength: 48
-    // TODO: validation
-    pub type IlpFulfilment = String;
+// pattern: ^[A-Za-z0-9-_]{43}$
+// but..
+// maxLength: 48
+// TODO: validation
+pub type IlpFulfilment = String;
 
-    #[derive(Serialize, Deserialize, Debug, ToSql)]
-    pub enum TransferState {
-        RECEIVED,
-        RESERVED,
-        COMMITTED,
-        ABORTED,
-    }
+#[derive(Serialize, Deserialize, Debug, ToSql)]
+pub enum TransferState {
+    RECEIVED,
+    RESERVED,
+    COMMITTED,
+    ABORTED,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
