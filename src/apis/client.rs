@@ -5,15 +5,15 @@ use super::configuration::Configuration;
 
 pub struct APIClient<C: hyper::client::Connect> {
   configuration: Rc<Configuration<C>>,
-  authorizations_api: Box<::apis::AuthorizationsApi>,
-  bulk_quotes_api: Box<::apis::BulkQuotesApi>,
-  bulk_transfers_api: Box<::apis::BulkTransfersApi>,
-  participants_api: Box<::apis::ParticipantsApi>,
-  parties_api: Box<::apis::PartiesApi>,
-  quotes_api: Box<::apis::QuotesApi>,
-  transaction_requests_api: Box<::apis::TransactionRequestsApi>,
-  transactions_api: Box<::apis::TransactionsApi>,
-  transfers_api: Box<::apis::TransfersApi>,
+  authorizations_api: Box<dyn (::apis::AuthorizationsApi)>,
+  bulk_quotes_api: Box<dyn (::apis::BulkQuotesApi)>,
+  bulk_transfers_api: Box<dyn (::apis::BulkTransfersApi)>,
+  participants_api: Box<dyn (::apis::ParticipantsApi)>,
+  parties_api: Box<dyn (::apis::PartiesApi)>,
+  quotes_api: Box<dyn (::apis::QuotesApi)>,
+  transaction_requests_api: Box<dyn (::apis::TransactionRequestsApi)>,
+  transactions_api: Box<dyn (::apis::TransactionsApi)>,
+  transfers_api: Box<dyn (::apis::TransfersApi)>,
 }
 
 impl<C: hyper::client::Connect> APIClient<C> {
