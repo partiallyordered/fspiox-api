@@ -36,6 +36,13 @@ pub enum FspiopRequestBody {
     TransferPrepare (transfer::TransferPrepareRequestBody),
 }
 
+// TODO: this is not quite correct by construction (as per the aims of this project) because it is
+// possible to specify a resource_type property that does not correlate with the body property. For
+// example, it is possible to specify `resource_type: Quotes` and `body:
+// TransferPrepareRequestBody`. It's probably best to simply derive the former from the latter
+// with pattern matching.
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
 pub struct FspiopRequest {
     pub request_api_version: ApiVersion,
     pub accept_api_versions: Vec<ApiVersion>,
@@ -44,7 +51,9 @@ pub struct FspiopRequest {
     pub date: Option<chrono::DateTime<chrono::Utc>>,
     pub source: common::FspId,
     pub destination: common::FspId,
-    pub resource_type: ApiResourceType,
+    // See the TODO above this struct. In the short term, the resource_type will be derived from
+    // the FspiopRequestBody type when converting this request to an HTTP request.
+    // pub resource_type: ApiResourceType,
     pub body: FspiopRequestBody,
     // TODO:
     // - X-Forwarded-For
