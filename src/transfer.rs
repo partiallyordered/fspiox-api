@@ -19,7 +19,7 @@ pub type IlpPacket = String;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct TransferPostBody {
+pub struct TransferPrepareRequestBody {
     pub transfer_id: CorrelationId,
     pub payee_fsp: FspId,
     pub payer_fsp: FspId,
