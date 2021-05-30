@@ -20,7 +20,7 @@ pub type CorrelationId = Uuid;
 // TODO: validation
 pub type FspId = String;
 
-#[derive(Deserialize, Serialize, Debug, ToSql)]
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone)]
 pub enum Currency {
     AED,
     AFN,
