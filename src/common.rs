@@ -11,16 +11,24 @@ pub use rust_decimal::Decimal;
 
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
+// TODO: newtype
 pub type Amount = Decimal;
 
 // ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+// TODO: newtype
 pub type CorrelationId = Uuid;
 
 // ^.{1,32}$
-// TODO: validation
+// TODO: validation. In fact, in addition to the spec, which specifies the regex ^.{1,32}$, FspId
+//       only accepts alphanumeric characters. (At least, this is what central ledger tells us when
+//       we attempt to create a participant).
+// TODO: newtype
+// TODO: how much space can a utf-8 codepoint take? If it's finite, we could use
+//          mut [u8, 32 * 2]
+//       as the type for FspId
 pub type FspId = String;
 
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone)]
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum Currency {
     AED,
     AFN,
@@ -187,9 +195,12 @@ pub enum Currency {
 }
 
 // ^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:(\.\d{3}))(?:Z|[+-][01]\d:[0-5]\d)$
+// TODO: newtype?
 pub type DateTime = chrono::DateTime<chrono::Utc>;
 
-#[derive(Serialize, Deserialize, Debug)]
+// TODO: rusty_money? re-export?
+// TODO: "positive money". I.e. a type that will fail to deserialize a value < 0.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Money {
     pub currency: Currency,
     pub amount: Amount,
