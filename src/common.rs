@@ -9,6 +9,7 @@ use serde::{Serialize, Deserialize};
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 pub use rust_decimal::Decimal;
+use derive_more::Display;
 
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
@@ -37,14 +38,16 @@ impl CorrelationId {
 //       as the type for FspId
 pub type FspId = String;
 
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, EnumString)]
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, Display, EnumString)]
 pub enum Currency {
     AED,
+    AFA,
     AFN,
     ALL,
     AMD,
     ANG,
     AOA,
+    AOR,
     ARS,
     AUD,
     AWG,
@@ -58,18 +61,24 @@ pub enum Currency {
     BMD,
     BND,
     BOB,
+    BOV,
     BRL,
     BSD,
     BTN,
     BWP,
     BYN,
+    BYR,
     BZD,
     CAD,
     CDF,
+    CHE,
     CHF,
+    CHW,
+    CLF,
     CLP,
     CNY,
     COP,
+    COU,
     CRC,
     CUC,
     CUP,
@@ -79,6 +88,7 @@ pub enum Currency {
     DKK,
     DOP,
     DZD,
+    EEK,
     EGP,
     ERN,
     ETB,
@@ -124,6 +134,8 @@ pub enum Currency {
     LKR,
     LRD,
     LSL,
+    LTL,
+    LVL,
     LYD,
     MAD,
     MDL,
@@ -137,6 +149,7 @@ pub enum Currency {
     MVR,
     MWK,
     MXN,
+    MXV,
     MYR,
     MZN,
     NAD,
@@ -169,6 +182,7 @@ pub enum Currency {
     SOS,
     SPL,
     SRD,
+    SSP,
     STD,
     SVC,
     SYP,
@@ -186,6 +200,8 @@ pub enum Currency {
     UAH,
     UGX,
     USD,
+    USN,
+    UYI,
     UYU,
     UZS,
     VEF,
@@ -193,14 +209,28 @@ pub enum Currency {
     VUV,
     WST,
     XAF,
+    XAG,
+    XAU,
     XCD,
     XDR,
+    XFO,
+    XFU,
     XOF,
+    XPD,
     XPF,
+    XPT,
+    XSU,
+    XTS,
+    XUA,
+    XXX,
     YER,
     ZAR,
+    ZMK,
     ZMW,
     ZWD,
+    ZWL,
+    ZWN,
+    ZWR,
 }
 
 // ^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:(\.\d{3}))(?:Z|[+-][01]\d:[0-5]\d)$
