@@ -385,3 +385,12 @@ pub struct ErrorInformation {
 pub struct ErrorResponse {
     pub error_information: ErrorInformation,
 }
+
+// TODO: we're going to have Serialize implemented on all types in this API, so write a macro to
+// use that information to implement Display using serde::Serialize. And possibly Debug, also?
+// Probably not Debug- that would probably violate the user's expectations.
+impl std::fmt::Display for ErrorResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", serde_json::to_string::<ErrorResponse>(self).unwrap())
+    }
+}
