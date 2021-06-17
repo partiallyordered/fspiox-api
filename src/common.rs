@@ -4,6 +4,7 @@
 //       https://blog.logrocket.com/json-input-validation-in-rust-web-services/
 //       or try swagger generator?
 
+use strum_macros::EnumString;
 use serde::{Serialize, Deserialize};
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
@@ -12,11 +13,19 @@ pub use rust_decimal::Decimal;
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
 // TODO: newtype
+// TODO: rusty_money?
 pub type Amount = Decimal;
 
 // ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
 // TODO: newtype
-pub type CorrelationId = Uuid;
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct CorrelationId(Uuid);
+
+impl CorrelationId {
+    pub fn new() -> CorrelationId {
+        return CorrelationId(Uuid::new_v4());
+    }
+}
 
 // ^.{1,32}$
 // TODO: validation. In fact, in addition to the spec, which specifies the regex ^.{1,32}$, FspId
@@ -28,7 +37,7 @@ pub type CorrelationId = Uuid;
 //       as the type for FspId
 pub type FspId = String;
 
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, EnumString)]
 pub enum Currency {
     AED,
     AFN,
@@ -204,4 +213,175 @@ pub type DateTime = chrono::DateTime<chrono::Utc>;
 pub struct Money {
     pub currency: Currency,
     pub amount: Amount,
+}
+
+/** See section 7.6 of "API Definition v1.0.docx". Note that some of the these
+ * error objects contain an httpStatusCode property that indicates the HTTP
+ * response code for cases where errors are returned immediately i.e. upon
+ * request, rather than on callback.  Those error objects that do not contain
+ * an httpStatusCode property are expected to only be returned to callers in
+ * error callbacks after the initial request was accepted with a 202/200.
+ */
+// TODO: might need to write custom de/serialize code for this. It's slightly awkward.
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MojaloopApiError {
+    // Generic communication errors
+    #[serde(rename = "1000")]
+    CommunicationError,            // { code: "1000", message: "Communication error" },
+    #[serde(rename = "1001")]
+    DestinationCommunicationError, // { code: "1001", message: "Destination communication error" },
+
+    // Generic server errors
+    #[serde(rename = "2000")]
+    ServerError,                   // { code: "2000", message: "Generic server error" },
+    #[serde(rename = "2001")]
+    InternalServerError,           // { code: "2001", message: "Internal server error" },
+    #[serde(rename = "2002")]
+    NotImplemented,                // { code: "2002", message: "Not implemented" , httpStatusCode: 501},
+    #[serde(rename = "2003")]
+    ServiceCurrentlyUnavailable,   // { code: "2003", message: "Service currently unavailable", httpStatusCode: 503 },
+    #[serde(rename = "2004")]
+    ServerTimedOut,                // { code: "2004", message: "Server timed out" },
+    #[serde(rename = "2005")]
+    ServerBusy,                    // { code: "2005", message: "Server busy" },
+
+    // Generic client errors
+    // TODO:
+    // 1. check the spec to determine whether these two codes are indeed both 3000
+    // 2. check the spec to determine whether they're actually intended to just be the same
+    //    "generic client error" and the writer of sdk-standard-components either made a mistake or
+    //    took some artistic license.
+    // 3. if they are not the same, or not intended to be the same, fix this
+    // 4. if they are the same, and intended to be the same code, but with different
+    //    interpretations, this may require some sort of custom fix-up after deserialisation to
+    //    determine the correct code based on the error message, or the HTTP response code (or we
+    //    could ignore it for the sake of simplicity, and just call the API bad). Or we could
+    //    ignore this- the http response code could be considered part of the error response, and
+    //    therefore included in that struct. Moreover, the error description should help us
+    //    delineate the correct action to take where necesary.
+    #[serde(rename = "3000")]
+    ClientError,                   // { code: "3000", message: "Generic client error", httpStatusCode: 400 },
+    #[serde(rename = "3000")]
+    MethodNotAllowed,              // { code: "3000", message: "Generic client error - Method Not Allowed", httpStatusCode: 405 },
+    #[serde(rename = "3001")]
+    UnacceptableVersion,           // { code: "3001", message: "Unacceptable version requested", httpStatusCode: 406 },
+    #[serde(rename = "3002")]
+    UnknownUri,                    // { code: "3002", message: "Unknown URI", httpStatusCode: 404 },
+    #[serde(rename = "3003")]
+    AddPartyInfoError,             // { code: "3003", message: "Add Party information error" },
+    #[serde(rename = "3040")]
+    DeletePartyInfoError,          // { code: "3040", message: "Delete Party information error" }, // Error code thrown in ALS when deleting participant info fails
+
+    // Client validation errors
+    #[serde(rename = "3100")]
+    ValidationError,               // { code: "3100", message: "Generic validation error", httpStatusCode: 400 },
+    #[serde(rename = "3101")]
+    MalformedSyntax,               // { code: "3101", message: "Malformed syntax", httpStatusCode: 400 },
+    #[serde(rename = "3102")]
+    MissingElement,                // { code: "3102", message: "Missing mandatory element", httpStatusCode: 400 },
+    #[serde(rename = "3103")]
+    TooManyElements,               // { code: "3103", message: "Too many elements", httpStatusCode: 400 },
+    #[serde(rename = "3104")]
+    TooLargePayload,               // { code: "3104", message: "Too large payload", httpStatusCode: 400 },
+    #[serde(rename = "3105")]
+    InvalidSignature,              // { code: "3105", message: "Invalid signature", httpStatusCode: 400 },
+    #[serde(rename = "3106")]
+    ModifiedRequest,               // { code: "3106", message: "Modified request", httpStatusCode: 400 },
+    #[serde(rename = "3107")]
+    MissingMandatoryExtension,     // { code: "3107", message: "Missing mandatory extension parameter", httpStatusCode: 400 },
+
+    // Identifier errors
+    #[serde(rename = "3200")]
+    IdNotFound,                    // { code: "3200", message: "Generic ID not found" },
+    #[serde(rename = "3201")]
+    DestinationFspError,           // { code: "3201", message: "Destination FSP Error" },
+    #[serde(rename = "3202")]
+    PayerFspIdNotFound,            // { code: "3202", message: "Payer FSP ID not found" },
+    #[serde(rename = "3203")]
+    PayeeFspIdNotFound,            // { code: "3203", message: "Payee FSP ID not found" },
+    #[serde(rename = "3204")]
+    PartyNotFound,                 // { code: "3204", message: "Party not found" },
+    #[serde(rename = "3205")]
+    QuoteIdNotFound,               // { code: "3205", message: "Quote ID not found" },
+    #[serde(rename = "3206")]
+    TxnRequestIdNotFound,          // { code: "3206", message: "Transaction request ID not found" },
+    #[serde(rename = "3207")]
+    TxnIdNotFound,                 // { code: "3207", message: "Transaction ID not found" },
+    #[serde(rename = "3208")]
+    TransferIdNotFound,            // { code: "3208", message: "Transfer ID not found" },
+    #[serde(rename = "3209")]
+    BulkQuoteIdNotFound,           // { code: "3209", message: "Bulk quote ID not found" },
+    #[serde(rename = "3210")]
+    BulkTransferIdNotFound,        // { code: "3210", message: "Bulk transfer ID not found" },
+
+    // Expired errors
+    #[serde(rename = "3300")]
+    ExpiredError,                  // { code: "3300", message: "Generic expired error" },
+    #[serde(rename = "3301")]
+    TxnRequestExpired,             // { code: "3301", message: "Transaction request expired" },
+    #[serde(rename = "3302")]
+    QuoteExpired,                  // { code: "3302", message: "Quote expired" },
+    #[serde(rename = "3303")]
+    TransferExpired,               // { code: "3303", message: "Transfer expired" },
+
+    // Payer errors
+    #[serde(rename = "4000")]
+    PayerError,                    // { code: "4000", message: "Generic Payer error" },
+    #[serde(rename = "4001")]
+    PayerFspInsufficientLiquidity, // { code: "4001", message: "Payer FSP insufficient liquidity" },
+    #[serde(rename = "4100")]
+    PayerRejection,                // { code: "4100", message: "Generic Payer rejection" },
+    #[serde(rename = "4101")]
+    PayerRejectedTxnRequest,       // { code: "4101", message: "Payer rejected transaction request" },
+    #[serde(rename = "4102")]
+    PayerFspUnsupportedTxnType,    // { code: "4102", message: "Payer FSP unsupported transaction type" },
+    #[serde(rename = "4103")]
+    PayerUnsupportedCurrency,      // { code: "4103", message: "Payer unsupported currency" },
+    #[serde(rename = "4200")]
+    PayerLimitError,               // { code: "4200", message: "Payer limit error" },
+    #[serde(rename = "4300")]
+    PayerPermissionError,          // { code: "4300", message: "Payer permission error" },
+    #[serde(rename = "4400")]
+    PayerBlockedError,             // { code: "4400", message: "Generic Payer blocked error" },
+
+    // Payee errors
+    #[serde(rename = "5000")]
+    PayeeError,                    // { code: "5000", message: "Generic Payee error" },
+    #[serde(rename = "5001")]
+    PayeeFspInsufficientLiquidity, // { code: "5001", message: "Payee FSP insufficient liquidity" },
+    #[serde(rename = "5100")]
+    PayeeRejection,                // { code: "5100", message: "Generic Payee rejection" },
+    #[serde(rename = "5101")]
+    PayeeRejectedQuote,            // { code: "5101", message: "Payee rejected quote" },
+    #[serde(rename = "5102")]
+    PayeeFspUnsupportedTxnType,    // { code: "5102", message: "Payee FSP unsupported transaction type" },
+    #[serde(rename = "5103")]
+    PayeeFspRejectedQuote,         // { code: "5103", message: "Payee FSP rejected quote" },
+    #[serde(rename = "5104")]
+    PayeeRejectedTxn,              // { code: "5104", message: "Payee rejected transaction" },
+    #[serde(rename = "5105")]
+    PayeeFspRejectedTxn,           // { code: "5105", message: "Payee FSP rejected transaction" },
+    #[serde(rename = "5106")]
+    PayeeUnsupportedCurrency,      // { code: "5106", message: "Payee unsupported currency" },
+    #[serde(rename = "5200")]
+    PayeeLimitError,               // { code: "5200", message: "Payee limit error" },
+    #[serde(rename = "5300")]
+    PayeePermissionError,          // { code: "5300", message: "Payee permission error" },
+    #[serde(rename = "5400")]
+    GenericPayeeBlockedError,      // { code: "5400", message: "Generic Payee blocked error" }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorInformation {
+    // TODO:
+    pub error_code: MojaloopApiError,
+    pub error_description: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorResponse {
+    pub error_information: ErrorInformation,
 }

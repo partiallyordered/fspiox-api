@@ -14,3 +14,6 @@ serde = { version = "1", features = ["derive"] }
 tokio-postgres = "0.7"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 rust_decimal = { version = "1", features = ["db-postgres"] }
+derive_more = "0.99"
+strum = "0.21"
+strum_macros = "0.21"
