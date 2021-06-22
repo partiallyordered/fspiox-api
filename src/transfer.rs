@@ -8,6 +8,7 @@ use serde::{Serialize, Deserialize};
 use tokio_postgres::types::ToSql;
 use crate::common::*;
 use strum_macros::EnumString;
+use derive_more::{FromStr, Display};
 
 // ^[A-Za-z0-9-_]{43}$
 // TODO: validation
@@ -18,10 +19,13 @@ pub type IlpCondition = String;
 // TODO: validation
 pub type IlpPacket = String;
 
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
+pub struct TransferId(pub CorrelationId);
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferPrepareRequestBody {
-    pub transfer_id: CorrelationId,
+    pub transfer_id: TransferId,
     pub payee_fsp: FspId,
     pub payer_fsp: FspId,
     pub amount: Money,
@@ -30,35 +34,6 @@ pub struct TransferPrepareRequestBody {
     #[serde(with = "fspiop_serde_date_formatter")]
     pub expiration: DateTime,
     // TODO: handle extensionList
-}
-
-// Thanks go to https://serde.rs/custom-date-format.html
-mod fspiop_serde_date_formatter {
-    use chrono::{DateTime, Utc, TimeZone};
-    use serde::{self, Deserialize, Serializer, Deserializer};
-
-    const FORMAT: &'static str = "%Y-%m-%dT%H:%M:%S%.3fZ";
-
-    pub fn serialize<S>(
-        date: &DateTime<Utc>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let s = format!("{}", date.format(FORMAT));
-        serializer.serialize_str(&s)
-    }
-
-    pub fn deserialize<'de, D>(
-        deserializer: D,
-    ) -> Result<DateTime<Utc>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Utc.datetime_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
-    }
 }
 
 // pattern: ^[A-Za-z0-9-_]{43}$

@@ -10,3 +10,4 @@ hindrance.
 - rustdoc
 - replace usage of derive_more with strum?
 - logging feature
+- put postgres ToSql usage behind a feature

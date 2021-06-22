@@ -5,6 +5,7 @@
 use serde::Serialize;
 pub mod transfer;
 pub mod common;
+pub mod quote;
 use std::option::Option;
 use std::vec::Vec;
 use chrono::Utc;
@@ -36,6 +37,8 @@ pub enum ApiVersion {
 pub enum FspiopRequestBody {
     TransferFulfil (transfer::TransferFulfilRequestBody),
     TransferPrepare (transfer::TransferPrepareRequestBody),
+    PostQuotes (quote::QuoteRequestBody),
+    NoBody,
 }
 
 #[derive(Debug, strum_macros::ToString)]
@@ -102,11 +105,72 @@ pub struct FspiopRequest {
     // See: https://github.com/mojaloop/mojaloop-specification/blob/d9393fa490ec825689ea5f325ac38e97d06956cf/fspiop-api/documents/API%20Definition%20v1.1.md#3211-http-request-header-fields
 }
 
+// TODO: probably move this to the transfer crate, and everything else it depends on to the common
+// crate
+pub fn build_post_quotes(
+    payer_fsp: common::FspId,
+    payee_fsp: common::FspId,
+    amount: common::Amount,
+    currency: common::Currency,
+) -> FspiopRequest {
+    FspiopRequest {
+        source: payer_fsp.clone(),
+        destination: payee_fsp.clone(),
+        path: "/quotes".to_string(),
+        resource: FspiopResource::Quotes,
+        method: FspiopMethod::POST,
+        request_api_version: ApiVersion::V1pt0,
+        accept_api_versions: vec![ApiVersion::V1pt0],
+        date: Some(Utc::now()),
+        body: FspiopRequestBody::PostQuotes(
+            quote::QuoteRequestBody {
+                quote_id: quote::QuoteId(common::CorrelationId::new()),
+                transaction_id: quote::TransactionId(common::CorrelationId::new()),
+                payer: quote::Payer {
+                    party_id_info: quote::PartyIdInfo {
+                        fsp_id: payer_fsp.clone(),
+                        party_id_type: quote::PartyIdType::Msisdn,
+                        party_identifier: "1234567890".to_string(),
+                    },
+                    personal_info: quote::PersonalInfo {
+                        complex_name: quote::ComplexName {
+                            first_name: "Mats".to_string(),
+                            last_name: "Hagman".to_string(),
+                        },
+                    },
+                },
+                payee: quote::Payee {
+                    party_id_info: quote::PartyIdInfo {
+                        fsp_id: payee_fsp.clone(),
+                        party_id_type: quote::PartyIdType::Msisdn,
+                        party_identifier: "1234567890".to_string(),
+                    },
+                },
+                amount_type: quote::AmountType::Send,
+                amount: common::Money {
+                    currency,
+                    amount,
+                },
+                transaction_type: quote::TransactionType {
+                    scenario: quote::Scenario::Transfer,
+                    initiator: quote::Initiator::Payer,
+                    initiator_type: quote::InitiatorType::Consumer,
+                },
+                note: "Created by fspiox-api".to_string(),
+                expiration: Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap(),
+            }
+        )
+    }
+}
+
+// TODO: probably move this to the transfer crate, and everything else it depends on to the common
+// crate
 pub fn build_transfer_prepare(
     payer_fsp: common::FspId,
     payee_fsp: common::FspId,
     amount: common::Amount,
     currency: common::Currency,
+    transfer_id: Option<transfer::TransferId>,
 ) -> FspiopRequest {
     FspiopRequest {
         source: payer_fsp.clone(),
@@ -119,7 +183,7 @@ pub fn build_transfer_prepare(
         date: Some(Utc::now()),
         body: FspiopRequestBody::TransferPrepare(
             transfer::TransferPrepareRequestBody {
-                transfer_id: common::CorrelationId::new(),
+                transfer_id: transfer_id.unwrap_or(transfer::TransferId(common::CorrelationId::new())),
                 payer_fsp,
                 payee_fsp,
                 amount: common::Money {

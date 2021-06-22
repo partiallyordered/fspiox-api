@@ -12,6 +12,36 @@ pub use rust_decimal::Decimal;
 use derive_more::{FromStr, Display};
 use serde;
 
+// Thanks go to https://serde.rs/custom-date-format.html
+pub(crate) mod fspiop_serde_date_formatter {
+    use chrono::{DateTime, Utc, TimeZone};
+    use serde::{self, Deserialize, Serializer, Deserializer};
+
+    const FORMAT: &'static str = "%Y-%m-%dT%H:%M:%S%.3fZ";
+
+    pub fn serialize<S>(
+        date: &DateTime<Utc>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = format!("{}", date.format(FORMAT));
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Utc.datetime_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
+    }
+}
+
+
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
 // TODO: newtype
@@ -20,8 +50,8 @@ pub type Amount = Decimal;
 
 // ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
 // TODO: newtype
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, FromStr)]
-pub struct CorrelationId(Uuid);
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
+pub struct CorrelationId(pub Uuid);
 
 impl CorrelationId {
     pub fn new() -> CorrelationId {
