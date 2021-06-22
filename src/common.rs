@@ -9,7 +9,8 @@ use serde::{Serialize, Deserialize};
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 pub use rust_decimal::Decimal;
-use derive_more::Display;
+use derive_more::{FromStr, Display};
+use serde;
 
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
@@ -19,7 +20,7 @@ pub type Amount = Decimal;
 
 // ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
 // TODO: newtype
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, FromStr)]
 pub struct CorrelationId(Uuid);
 
 impl CorrelationId {

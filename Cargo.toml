@@ -17,3 +17,11 @@ rust_decimal = { version = "1", features = ["db-postgres"] }
 derive_more = "0.99"
 strum = "0.21"
 strum_macros = "0.21"
+
+# optional
+hyper = { version = "0.14", optional = true }
+# http probably needs to be the same version that the above version of hyper depends on.
+http = { version = "0.2.4", optional = true }
+
+[features]
+fsp_http = ["hyper", "http"]

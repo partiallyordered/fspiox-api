@@ -8,4 +8,5 @@ hindrance.
 
 ### TODO:
 - rustdoc
+- replace usage of derive_more with strum?
 - logging feature

@@ -7,6 +7,7 @@
 use serde::{Serialize, Deserialize};
 use tokio_postgres::types::ToSql;
 use crate::common::*;
+use strum_macros::EnumString;
 
 // ^[A-Za-z0-9-_]{43}$
 // TODO: validation
@@ -26,17 +27,48 @@ pub struct TransferPrepareRequestBody {
     pub amount: Money,
     pub ilp_packet: IlpPacket,
     pub condition: IlpCondition,
+    #[serde(with = "fspiop_serde_date_formatter")]
     pub expiration: DateTime,
     // TODO: handle extensionList
+}
+
+// Thanks go to https://serde.rs/custom-date-format.html
+mod fspiop_serde_date_formatter {
+    use chrono::{DateTime, Utc, TimeZone};
+    use serde::{self, Deserialize, Serializer, Deserializer};
+
+    const FORMAT: &'static str = "%Y-%m-%dT%H:%M:%S%.3fZ";
+
+    pub fn serialize<S>(
+        date: &DateTime<Utc>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = format!("{}", date.format(FORMAT));
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Utc.datetime_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
+    }
 }
 
 // pattern: ^[A-Za-z0-9-_]{43}$
 // but..
 // maxLength: 48
+// according to the openapi spec
 // TODO: validation
 pub type IlpFulfilment = String;
 
-#[derive(Serialize, Deserialize, Debug, ToSql)]
+#[derive(Serialize, Deserialize, Debug, ToSql, EnumString)]
 pub enum TransferState {
     RECEIVED,
     RESERVED,
