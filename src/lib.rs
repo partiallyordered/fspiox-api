@@ -2,7 +2,8 @@
 // 1.0? And re-exports 1.0? A single crate that exports both? (Probably the latter..).
 
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+// use serde::de::DeserializeOwned;
 pub mod transfer;
 pub mod common;
 pub mod quote;
@@ -24,7 +25,7 @@ pub enum ApiResourceType {
     BulkTransfers,
 }
 
-#[derive(Debug, derive_more::Display)]
+#[derive(Debug, Serialize, Deserialize, derive_more::Display)]
 pub enum ApiVersion {
     #[display(fmt = "1.0")]
     V1pt0,
@@ -32,7 +33,7 @@ pub enum ApiVersion {
     V1pt1,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub enum FspiopRequestBody {
     TransferFulfil (transfer::TransferFulfilRequestBody),
@@ -41,7 +42,7 @@ pub enum FspiopRequestBody {
     NoBody,
 }
 
-#[derive(Debug, strum_macros::ToString)]
+#[derive(Debug, Deserialize, Serialize, strum_macros::ToString)]
 pub enum FspiopMethod {
     GET,
     PUT,
@@ -62,7 +63,7 @@ impl From<FspiopMethod> for http::Method {
 }
 
 // https://github.com/mojaloop/mojaloop-specification/blob/7d8e1be6bb131a0142dc47e3d5acbb5a3f1655c7/fspiop-api/documents/API-Definition_v1.1.md#3133-path
-#[derive(Debug, strum_macros::Display)]
+#[derive(Debug, Deserialize, Serialize, strum_macros::Display)]
 #[strum(serialize_all = "camelCase")]
 pub enum FspiopResource {
     Participants,
@@ -81,7 +82,7 @@ pub enum FspiopResource {
 // example, it is possible to specify `resource_type: Quotes` and `body:
 // TransferPrepareRequestBody`. It's probably best to simply derive the former from the latter
 // with pattern matching.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FspiopRequest {
     pub request_api_version: ApiVersion,
     pub accept_api_versions: Vec<ApiVersion>,
