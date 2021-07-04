@@ -11,3 +11,9 @@ hindrance.
 - replace usage of derive_more with strum?
 - logging feature
 - put postgres ToSql usage behind a feature
+- _do not export common_. It's fine for internal use but a terrible name for a user to import. E.g.
+    ```rust
+    use fspiox_api::common;
+    // wtf is common?
+    common::some_function();
+    ```

@@ -106,6 +106,58 @@ pub struct FspiopRequest {
     // See: https://github.com/mojaloop/mojaloop-specification/blob/d9393fa490ec825689ea5f325ac38e97d06956cf/fspiop-api/documents/API%20Definition%20v1.1.md#3211-http-request-header-fields
 }
 
+#[cfg(feature = "fsp_http")]
+pub fn to_http_request(
+    req: FspiopRequest,
+    host: &str
+) -> Result<http::Request<String>, url::ParseError> {
+    use url::Url;
+    // For now, matching on method to build the body (or not) seems to be working. If it breaks
+    // down, it should be possible to match on the body type. I.e.
+    // match req.body {
+    //     FspiopRequestBody::TransferPrepare(transfer_prepare_request_body) => { .. build body }
+    // }
+    let body = match req.method {
+        FspiopMethod::GET => "".to_string(),
+        // Cheeky: because we configured serde to serialize the FspiopRequestBody as untagged, the
+        // result of to_string here will consist only of the actual request body.
+        FspiopMethod::PUT | FspiopMethod::POST => serde_json::to_string(&req.body).unwrap(),
+    };
+    let accept = req.accept_api_versions
+        .iter()
+        .map(|v| format!("application/vnd.interoperability.{}+json;version={}", req.resource, v))
+        .collect::<Vec<String>>()
+        .join(",");
+    Ok(
+        http::request::Builder::new()
+            // TODO: probably we should accept a url::Uri as host, then
+            // .uri(host.join(clr.path().as_str()).unwrap().as_str())
+            // then make sure in unit testing that every path we would use here is a valid URI
+            // path, so that the unwrap() shouldn't panic (as long as host.join(path) is valid,
+            // which it should be, I think..?). Or should we take a string and strip any trailing
+            // slash, to allow a user to build a request with a relative uri using this function.
+            .uri(Url::parse(host)?.join(req.path.as_str())?.as_str())
+            // .header("Date", req.date.unwrap_or(Utc::now()).to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+            // The implementation of ml-api-adapter says:
+            //   \"date\" must be in ddd, D MMM YYYY H:mm:ss [GMT] format
+            // In practice, it requires the GMT string. And does not accept other timezones (this may
+            // be intentional, but when the implementation clearly contradicts the error message, it
+            // becomes more difficult to be certain). Ostensibly, it follows the RFC here:
+            // https://datatracker.ietf.org/doc/html/rfc7231#section-7.1.1.2
+            // TODO: this should be fixed upstream
+            .header("Date", req.date.unwrap_or(Utc::now()).format("%a, %d %b %Y %T GMT").to_string())
+            .header("FSPIOP-URI", req.path)
+            .header("FSPIOP-HTTP-Method", req.method.to_string())
+            .header("FSPIOP-Source", req.source)
+            .header("FSPIOP-Destination", req.destination)
+            .header("Accept", accept)
+            .header("Content-Type", format!("application/vnd.interoperability.{}+json;version={}", req.resource, req.request_api_version))
+            .method(req.method)
+            .body(body)
+            .unwrap()
+    )
+}
+
 // TODO: probably move this to the transfer crate, and everything else it depends on to the common
 // crate
 pub fn build_post_quotes(
@@ -200,6 +252,9 @@ pub fn build_transfer_prepare(
     }
 }
 
+// TODO: the only differences between this request builder and the http request builder in
+// to_http_request are in the body and the uri. Here the body is hyper::Body::from(body) and the
+// URI is relative. It _might_ make sense to deduplicate this stuff.
 #[cfg(feature = "fsp_http")]
 pub fn to_hyper_request(req: FspiopRequest) -> Result<hyper::Request<hyper::body::Body>, http::Error>
 {
@@ -229,6 +284,7 @@ pub fn to_hyper_request(req: FspiopRequest) -> Result<hyper::Request<hyper::body
         // be intentional, but when the implementation clearly contradicts the error message, it
         // becomes more difficult to be certain). Ostensibly, it follows the RFC here:
         // https://datatracker.ietf.org/doc/html/rfc7231#section-7.1.1.2
+        // TODO: this should be fixed upstream
         .header("Date", req.date.unwrap_or(Utc::now()).format("%a, %d %b %Y %T GMT").to_string())
         .header("FSPIOP-URI", req.path)
         .header("FSPIOP-HTTP-Method", req.method.to_string())

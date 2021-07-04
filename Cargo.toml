@@ -1,6 +1,6 @@
 [package]
 name = "fspiox-api"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["msk- <mattkingston@gmail.com>"]
 edition = "2018"
 
@@ -22,6 +22,7 @@ strum_macros = "0.21"
 hyper = { version = "0.14", optional = true }
 # http probably needs to be the same version that the above version of hyper depends on.
 http = { version = "0.2.4", optional = true }
+url = { version = "2", optional = true }
 
 [features]
-fsp_http = ["hyper", "http"]
+fsp_http = ["hyper", "http", "url"]
