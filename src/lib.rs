@@ -218,6 +218,35 @@ pub fn build_post_quotes(
 
 // TODO: probably move this to the transfer crate, and everything else it depends on to the common
 // crate
+pub fn build_transfer_fulfil(
+    payer_fsp: common::FspId,
+    payee_fsp: common::FspId,
+    transfer_id: transfer::TransferId,
+) -> FspiopRequest {
+    FspiopRequest {
+        // Note source and destination are payeE and payeR respectively, because this is the
+        // response.
+        source: payee_fsp.clone(),
+        destination: payer_fsp.clone(),
+        path: format!("/transfers/{}", transfer_id),
+        resource: FspiopResource::Transfers,
+        method: FspiopMethod::POST,
+        request_api_version: ApiVersion::V1pt0,
+        accept_api_versions: vec![ApiVersion::V1pt0],
+        date: Some(Utc::now()),
+        body: FspiopRequestBody::TransferFulfil(
+            transfer::TransferFulfilRequestBody {
+                // /^[A-Za-z0-9-_]{43}$/"
+                fulfilment: "ilp_fulfilment_ilp_fulfilment_ilp_fulfilmen".to_string(),
+                completed_timestamp: Utc::now(),
+                transfer_state: transfer::TransferState::COMMITTED,
+            }
+        )
+    }
+}
+
+// TODO: probably move this to the transfer crate, and everything else it depends on to the common
+// crate
 pub fn build_transfer_prepare(
     payer_fsp: common::FspId,
     payee_fsp: common::FspId,
