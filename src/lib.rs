@@ -238,7 +238,7 @@ pub fn build_transfer_fulfil(
             transfer::TransferFulfilRequestBody {
                 // /^[A-Za-z0-9-_]{43}$/"
                 fulfilment: "ilp_fulfilment_ilp_fulfilment_ilp_fulfilmen".to_string(),
-                completed_timestamp: Utc::now(),
+                completed_timestamp: common::DateTime(Utc::now()),
                 transfer_state: transfer::TransferState::COMMITTED,
             }
         )
