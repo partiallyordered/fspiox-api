@@ -297,7 +297,6 @@ pub struct Money {
  * an httpStatusCode property are expected to only be returned to callers in
  * error callbacks after the initial request was accepted with a 202/200.
  */
-// TODO: might need to write custom de/serialize code for this. It's slightly awkward.
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MojaloopApiError {
