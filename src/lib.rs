@@ -158,7 +158,7 @@ pub fn build_post_quotes(
                     initiator_type: quote::InitiatorType::Consumer,
                 },
                 note: "Created by fspiox-api".to_string(),
-                expiration: Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap(),
+                expiration: common::DateTime(Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap()),
             }
         )
     }
@@ -194,7 +194,7 @@ pub fn build_transfer_prepare(
                 ilp_packet: "ilp_packet".to_string(),
                 // /^[A-Za-z0-9-_]{43}$/"
                 condition: "_ilp_condition_ilp_condition_ilp_condition_".to_string(),
-                expiration: Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap(),
+                expiration: common::DateTime(Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap()),
             }
         )
     }

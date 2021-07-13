@@ -31,7 +31,6 @@ pub struct TransferPrepareRequestBody {
     pub amount: Money,
     pub ilp_packet: IlpPacket,
     pub condition: IlpCondition,
-    #[serde(with = "fspiop_serde_date_formatter")]
     pub expiration: DateTime,
     // TODO: handle extensionList
 }

@@ -110,6 +110,5 @@ pub struct QuoteRequestBody {
     pub amount: Money,
     pub transaction_type: TransactionType,
     pub note: String,
-    #[serde(with = "fspiop_serde_date_formatter")]
     pub expiration: DateTime,
 }

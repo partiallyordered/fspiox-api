@@ -9,38 +9,9 @@ use serde::{Serialize, Deserialize};
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 pub use rust_decimal::Decimal;
-use derive_more::{FromStr, Display};
+use derive_more::{FromStr, Display, Constructor};
 use serde;
-
-// Thanks go to https://serde.rs/custom-date-format.html
-pub(crate) mod fspiop_serde_date_formatter {
-    use chrono::{DateTime, Utc, TimeZone};
-    use serde::{self, Deserialize, Serializer, Deserializer};
-
-    const FORMAT: &'static str = "%Y-%m-%dT%H:%M:%S%.3fZ";
-
-    pub fn serialize<S>(
-        date: &DateTime<Utc>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let s = format!("{}", date.format(FORMAT));
-        serializer.serialize_str(&s)
-    }
-
-    pub fn deserialize<'de, D>(
-        deserializer: D,
-    ) -> Result<DateTime<Utc>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Utc.datetime_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
-    }
-}
-
+use std::fmt;
 
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
@@ -265,8 +236,51 @@ pub enum Currency {
 }
 
 // ^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:(\.\d{3}))(?:Z|[+-][01]\d:[0-5]\d)$
-// TODO: newtype?
-pub type DateTime = chrono::DateTime<chrono::Utc>;
+#[derive(Constructor, Debug, Clone, Copy)]
+pub struct DateTime(pub chrono::DateTime<chrono::Utc>);
+
+const DATETIME_FORMAT: &'static str = "%Y-%m-%dT%H:%M:%S%.3fZ";
+
+impl fmt::Display for DateTime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0.format(DATETIME_FORMAT))
+    }
+}
+
+impl std::str::FromStr for DateTime {
+    type Err = chrono::format::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use chrono::{Utc, TimeZone};
+        Utc.datetime_from_str(&s, DATETIME_FORMAT).map(DateTime)
+    }
+}
+
+impl Serialize for DateTime {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = format!("{}", self.0.format(DATETIME_FORMAT));
+        serializer.serialize_str(&s)
+    }
+}
+
+impl<'de> Deserialize<'de> for DateTime {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> Result<DateTime, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use chrono::{Utc, TimeZone};
+        let s = String::deserialize(deserializer)?;
+        Utc.datetime_from_str(&s, DATETIME_FORMAT).map_err(serde::de::Error::custom).map(DateTime)
+    }
+}
 
 // TODO: rusty_money? re-export?
 // TODO: "positive money". I.e. a type that will fail to deserialize a value < 0.
