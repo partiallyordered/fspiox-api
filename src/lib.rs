@@ -230,7 +230,7 @@ pub fn build_transfer_fulfil(
         destination: payer_fsp.clone(),
         path: format!("/transfers/{}", transfer_id),
         resource: FspiopResource::Transfers,
-        method: FspiopMethod::POST,
+        method: FspiopMethod::PUT,
         request_api_version: ApiVersion::V1pt0,
         accept_api_versions: vec![ApiVersion::V1pt0],
         date: Some(Utc::now()),
