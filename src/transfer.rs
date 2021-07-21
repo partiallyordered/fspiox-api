@@ -53,6 +53,12 @@ pub enum TransferState {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferFulfilRequestBody {
+    // TODO:
+    // The spec doesn't actually require all of these fields. This is because the requests
+    // supported by PUT /transfers/$id are actually of three different types, depending on the
+    // provided transfer_state. See:
+    //   https://github.com/mojaloop/mojaloop-specification/blob/a66ea83f2a0c1e0073fe8bf93f301c01469d025d/fspiop-api/documents/v1.1-document-set/fspiop-v1.1-openapi2.yaml#L4358-L4359
+    // This is a shortcoming of Swagger, and is probably best modeled as a sum type in Rust.
     pub fulfilment: IlpFulfilment,
     pub completed_timestamp: DateTime,
     pub transfer_state: TransferState,
