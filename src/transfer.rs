@@ -5,7 +5,6 @@
 //       or try swagger generator?
 
 use serde::{Serialize, Deserialize};
-use tokio_postgres::types::ToSql;
 use crate::common::*;
 use strum_macros::EnumString;
 use derive_more::{FromStr, Display};
@@ -19,7 +18,7 @@ pub type IlpCondition = String;
 // TODO: validation
 pub type IlpPacket = String;
 
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
 pub struct TransferId(pub CorrelationId);
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -42,7 +41,7 @@ pub struct TransferPrepareRequestBody {
 // TODO: validation
 pub type IlpFulfilment = String;
 
-#[derive(Serialize, Deserialize, Debug, ToSql, EnumString)]
+#[derive(Serialize, Deserialize, Debug, EnumString)]
 pub enum TransferState {
     RECEIVED,
     RESERVED,

@@ -6,7 +6,6 @@
 
 use strum_macros::EnumString;
 use serde::{Serialize, Deserialize};
-use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 pub use rust_decimal::Decimal;
 use derive_more::{FromStr, Display, Constructor};
@@ -21,7 +20,7 @@ pub type Amount = Decimal;
 
 // ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
 // TODO: newtype
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
 pub struct CorrelationId(pub Uuid);
 
 impl CorrelationId {
@@ -40,7 +39,7 @@ impl CorrelationId {
 //       as the type for FspId
 pub type FspId = String;
 
-#[derive(Deserialize, Serialize, Debug, ToSql, Copy, Clone, Hash, PartialEq, Eq, Display, EnumString)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display, EnumString)]
 pub enum Currency {
     AED,
     AFA,
