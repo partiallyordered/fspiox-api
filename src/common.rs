@@ -12,16 +12,72 @@ use derive_more::{FromStr, Display, Constructor};
 use serde;
 use std::fmt;
 
+#[cfg(feature = "typescript_types")]
+use ts_rs::{TS, export};
+
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
 // TODO: newtype
 // TODO: rusty_money?
-pub type Amount = Decimal;
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
+pub struct Amount(Decimal);
+
+#[cfg(feature = "typescript_types")]
+impl TS for Amount {
+    fn name() -> String {
+        "Amount".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type Amount = string".to_string()
+    }
+}
 
 // ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
 // TODO: newtype
+// #[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
 pub struct CorrelationId(pub Uuid);
+
+#[cfg(feature = "typescript_types")]
+impl TS for CorrelationId {
+    fn name() -> String {
+        "CorrelationId".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type CorrelationId = string".to_string()
+    }
+}
+
+#[cfg(feature = "typescript_types")]
+impl TS for DateTime {
+    fn name() -> String {
+        "DateTime".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type DateTime = string".to_string()
+    }
+}
 
 impl CorrelationId {
     pub fn new() -> CorrelationId {
@@ -39,6 +95,7 @@ impl CorrelationId {
 //       as the type for FspId
 pub type FspId = String;
 
+#[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display, EnumString)]
 pub enum Currency {
     AED,
@@ -283,6 +340,7 @@ impl<'de> Deserialize<'de> for DateTime {
 
 // TODO: rusty_money? re-export?
 // TODO: "positive money". I.e. a type that will fail to deserialize a value < 0.
+#[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Money {
     pub currency: Currency,
@@ -296,6 +354,7 @@ pub struct Money {
  * an httpStatusCode property are expected to only be returned to callers in
  * error callbacks after the initial request was accepted with a 202/200.
  */
+#[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MojaloopApiError {
@@ -445,6 +504,7 @@ pub enum MojaloopApiError {
     GenericPayeeBlockedError,      // { code: "5400", message: "Generic Payee blocked error" }
 }
 
+#[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorInformation {
@@ -453,6 +513,7 @@ pub struct ErrorInformation {
     pub error_description: String,
 }
 
+#[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorResponse {

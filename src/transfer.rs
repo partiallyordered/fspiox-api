@@ -9,6 +9,9 @@ use crate::common::*;
 use strum_macros::EnumString;
 use derive_more::{FromStr, Display};
 
+#[cfg(feature = "typescript_types")]
+use ts_rs::TS;
+
 // ^[A-Za-z0-9-_]{43}$
 // TODO: validation
 pub type IlpCondition = String;
@@ -20,6 +23,19 @@ pub type IlpPacket = String;
 
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
 pub struct TransferId(pub CorrelationId);
+
+#[cfg(feature = "typescript_types")]
+impl TS for TransferId {
+    fn name() -> String {
+        "string".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
