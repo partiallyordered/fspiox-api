@@ -13,7 +13,7 @@ use serde;
 use std::fmt;
 
 #[cfg(feature = "typescript_types")]
-use ts_rs::{TS, export};
+use ts_rs::TS;
 
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
@@ -356,7 +356,7 @@ pub struct Money {
  * error callbacks after the initial request was accepted with a 202/200.
  */
 #[cfg_attr(feature = "typescript_types", derive(TS))]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MojaloopApiError {
     // Generic communication errors
