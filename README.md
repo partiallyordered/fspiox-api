@@ -7,6 +7,7 @@ serialise to use the same attribute names and cases. Where not present, it will 
 hindrance.
 
 ### TODO:
+- split types into a separate crate from all functions/impls?
 - rustdoc
 - replace usage of derive_more with strum?
 - logging feature
