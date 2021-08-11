@@ -88,7 +88,8 @@ impl CorrelationId {
 // ^.{1,32}$
 // TODO: validation. In fact, in addition to the spec, which specifies the regex ^.{1,32}$, FspId
 //       only accepts alphanumeric characters. (At least, this is what central ledger tells us when
-//       we attempt to create a participant).
+//       we attempt to create a participant). Additionally, central ledger will only accept 30
+//       characters for FSP ID. Basically, either central ledger is wrong, or the spec is wrong.
 // TODO: newtype
 // TODO: how much space can a utf-8 codepoint take? If it's finite, we could use
 //          mut [u8, 32 * 2]
