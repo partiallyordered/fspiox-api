@@ -249,7 +249,7 @@ pub fn build_transfer_fulfil(
                 // See also the Mojaloop fulfilment validation code here:
                 //   https://github.com/mojaloop/central-ledger/blob/01435fda1d61093b2e20ff2385e8d65393dac640/src/handlers/transfers/validator.js#L142
                 // /^[A-Za-z0-9-_]{43}$/"
-                fulfilment: "D2ICC9fGiWtKYf9PBRsFE8Dliem2iLqOajj56FuIVxc".to_string(),
+                fulfilment: transfer::IlpFulfilment::from("D2ICC9fGiWtKYf9PBRsFE8Dliem2iLqOajj56FuIVxc").unwrap(),
                 completed_timestamp: common::DateTime(Utc::now()),
                 transfer_state: transfer::TransferState::COMMITTED,
             }
@@ -285,7 +285,7 @@ pub fn build_transfer_prepare(
                     currency,
                 },
                 // TODO: build ilp_packet correctly
-                ilp_packet: "ilp_packet".to_string(),
+                ilp_packet: transfer::IlpPacket::from("ilp_packet").unwrap(),
                 // /^[A-Za-z0-9-_]{43}$/"
                 // TODO: expose the condition as a parameter. Note: the relationship between
                 // condition and fulfilment is this:
@@ -299,7 +299,7 @@ pub fn build_transfer_prepare(
                 // preimage.
                 // See also the Mojaloop fulfilment validation code here:
                 //   https://github.com/mojaloop/central-ledger/blob/01435fda1d61093b2e20ff2385e8d65393dac640/src/handlers/transfers/validator.js#L142
-                condition: "mDl1row96r7GHMZywWheDMzDJkvBB-iC2i0mR_vU870".to_string(),
+                condition: transfer::IlpCondition::from("mDl1row96r7GHMZywWheDMzDJkvBB-iC2i0mR_vU870").unwrap(),
                 expiration: common::DateTime(Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap()),
             }
         )
