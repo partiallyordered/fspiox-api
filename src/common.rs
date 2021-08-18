@@ -17,10 +17,16 @@ use ts_rs::TS;
 
 // ^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$
 // TODO: validation
-// TODO: newtype
 // TODO: rusty_money?
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display, PartialOrd, Ord)]
 pub struct Amount(Decimal);
+
+impl Amount {
+    pub fn abs(&self) -> Amount {
+        Amount(self.0.abs())
+    }
+    pub const ZERO: Amount = Amount(Decimal::ZERO);
+}
 
 #[cfg(feature = "typescript_types")]
 impl TS for Amount {
