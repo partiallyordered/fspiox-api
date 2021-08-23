@@ -14,12 +14,64 @@ use ts_rs::TS;
 
 // ^[A-Za-z0-9-_]{43}$
 // TODO: validation
-pub type IlpCondition = String;
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display)]
+pub struct IlpCondition(arrayvec::ArrayString<43>);
+
+impl IlpCondition {
+    pub fn from(item: &str) -> Result<Self, arrayvec::CapacityError<&str>> {
+        Ok(IlpCondition(arrayvec::ArrayString::from(item)?))
+    }
+}
+
+#[cfg(feature = "typescript_types")]
+impl TS for IlpCondition {
+    fn name() -> String {
+        "IlpCondition".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type IlpCondition = string".to_string()
+    }
+}
 
 // ^[A-Za-z0-9-_]+[=]{0,2}$
 // minLength: 1, maxLength: 32768
 // TODO: validation
-pub type IlpPacket = String;
+// TODO: we've limited the size of the ILP packet here because:
+// 1. we're not the actual ML API
+// 2. 32768 bytes?! Yeah, I get it. But I'd probably limit that on my own API for performance.
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display, FromStr)]
+pub struct IlpPacket(arrayvec::ArrayString<256>);
+
+impl IlpPacket {
+    pub fn from(item: &str) -> Result<Self, arrayvec::CapacityError<&str>> {
+        Ok(IlpPacket(arrayvec::ArrayString::from(item)?))
+    }
+}
+
+
+#[cfg(feature = "typescript_types")]
+impl TS for IlpPacket {
+    fn name() -> String {
+        "IlpPacket".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type IlpPacket = string".to_string()
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, FromStr, Display)]
 pub struct TransferId(pub CorrelationId);
@@ -37,7 +89,7 @@ impl TS for TransferId {
     fn transparent() -> bool { false }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferPrepareRequestBody {
     pub transfer_id: TransferId,
@@ -55,9 +107,33 @@ pub struct TransferPrepareRequestBody {
 // maxLength: 48
 // according to the openapi spec
 // TODO: validation
-pub type IlpFulfilment = String;
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display)]
+pub struct IlpFulfilment(arrayvec::ArrayString<43>);
 
-#[derive(Serialize, Deserialize, Debug, EnumString)]
+impl IlpFulfilment {
+    pub fn from(item: &str) -> Result<Self, arrayvec::CapacityError<&str>> {
+        Ok(IlpFulfilment(arrayvec::ArrayString::from(item)?))
+    }
+}
+
+#[cfg(feature = "typescript_types")]
+impl TS for IlpFulfilment {
+    fn name() -> String {
+        "IlpFulfilment".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type IlpFulfilment = string".to_string()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, EnumString, Clone, Copy)]
 pub enum TransferState {
     RECEIVED,
     RESERVED,
@@ -65,7 +141,7 @@ pub enum TransferState {
     ABORTED,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferFulfilRequestBody {
     // TODO:

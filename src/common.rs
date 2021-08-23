@@ -96,11 +96,42 @@ impl CorrelationId {
 //       only accepts alphanumeric characters. (At least, this is what central ledger tells us when
 //       we attempt to create a participant). Additionally, central ledger will only accept 30
 //       characters for FSP ID. Basically, either central ledger is wrong, or the spec is wrong.
-// TODO: newtype
-// TODO: how much space can a utf-8 codepoint take? If it's finite, we could use
-//          mut [u8, 32 * 2]
-//       as the type for FspId
-pub type FspId = String;
+//
+//       In terms of alphanumeric characters, it's probably best if we can, if possible, make
+//       invalid FspId values unrepresentable. This means making the FspId type a newtype and
+//       implementing Serialize, Deserialize, FromStr, probably ToString etc.
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display)]
+pub struct FspId(arrayvec::ArrayString<30>);
+
+impl FspId {
+    pub fn from(item: &str) -> Result<Self, arrayvec::CapacityError<&str>> {
+        Ok(FspId(arrayvec::ArrayString::from(item)?))
+    }
+}
+
+#[cfg(feature = "typescript_types")]
+impl TS for FspId {
+    fn name() -> String {
+        "FspId".to_string()
+    }
+
+    fn dependencies() -> Vec<(std::any::TypeId, String)> {
+        Vec::new()
+    }
+
+    fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type FspId = string".to_string()
+    }
+}
+
+#[cfg(feature = "http")]
+impl From<FspId> for http::header::HeaderValue {
+    fn from(item: FspId) -> Self {
+        http::header::HeaderValue::from_str(item.0.as_str()).unwrap()
+    }
+}
 
 #[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display, EnumString)]
