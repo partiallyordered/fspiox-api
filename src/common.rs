@@ -104,8 +104,22 @@ impl CorrelationId {
 pub struct FspId(arrayvec::ArrayString<30>);
 
 impl FspId {
+    // TODO: can this be compile-time?
     pub fn from(item: &str) -> Result<Self, arrayvec::CapacityError<&str>> {
         Ok(FspId(arrayvec::ArrayString::from(item)?))
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display)]
+pub enum ParseFspIdErr {
+    FspIdTooLong,
+}
+
+impl core::str::FromStr for FspId {
+    type Err = ParseFspIdErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FspId::from(s).map_err(|_| ParseFspIdErr::FspIdTooLong)
     }
 }
 
