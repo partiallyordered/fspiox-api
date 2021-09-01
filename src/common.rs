@@ -118,6 +118,7 @@ pub enum ParseFspIdErr {
 impl core::str::FromStr for FspId {
     type Err = ParseFspIdErr;
 
+    // TODO: can this be compile-time for 'static &str?
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         FspId::from(s).map_err(|_| ParseFspIdErr::FspIdTooLong)
     }
