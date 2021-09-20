@@ -7,14 +7,9 @@ serialise to use the same attribute names and cases. Where not present, it will 
 hindrance.
 
 ### TODO:
-- split types into a separate crate from all functions/impls?
-- rustdoc
-- replace usage of derive_more with strum?
-- logging feature
-- put postgres ToSql usage behind a feature
-- _do not export common_. It's fine for internal use but a terrible name for a user to import. E.g.
-    ```rust
-    use fspiox_api::common;
-    // wtf is common?
-    common::some_function();
-    ```
+- Search all uses of .unwrap and other panics, document whether and why they're valid, or fix them
+- Split types into a separate crate from all functions/impls? Is this just a nuisance?
+- Rustdoc
+- Replace usage of derive_more with strum?
+- Logging feature
+- Put postgres ToSql usage behind a feature
