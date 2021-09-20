@@ -16,14 +16,17 @@ derive_more = "0.99"
 strum = "0.21"
 strum_macros = "0.21"
 arrayvec = { version = "0.7.1", features = ["serde"] }
+# http probably needs to be the same version that our version of hyper depends on.
+http = { version = "0.2.4" }
+http-serde = { version = "1.0" }
 
 # optional
-hyper = { version = "0.14", optional = true }
-# http probably needs to be the same version that the above version of hyper depends on.
-http = { version = "0.2.4", optional = true }
+hyper = { version = "0.14", optional = true, features = ["client", "http1"] }
 url = { version = "2", optional = true }
 ts-rs = { git = "https://github.com/Aleph-Alpha/ts-rs", rev = "ddd461522591a90b987b22dd05e06cfccbea6f5a", optional = true }
+tokio = { version = "1.6.1", features = ["full"], optional = true }
 
 [features]
-fsp_http = ["hyper", "http", "url"]
+fsp_http = ["hyper", "url"]
 typescript_types = ["ts-rs"]
+services = ["tokio"]

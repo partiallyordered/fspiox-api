@@ -1,7 +1,8 @@
 use serde::{Serialize, Deserialize};
-use crate::common::*;
+use crate::*;
 use strum_macros::EnumString;
 use derive_more::{FromStr, Display};
+use chrono::Utc;
 
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, EnumString, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -110,4 +111,78 @@ pub struct QuoteRequestBody {
     pub transaction_type: TransactionType,
     pub note: String,
     pub expiration: DateTime,
+}
+
+impl QuoteRequestBody {
+    pub fn generate(
+        payer_fsp: FspId,
+        payee_fsp: FspId,
+        amount: Amount,
+        currency: Currency,
+    ) -> QuoteRequestBody {
+        QuoteRequestBody {
+            quote_id: QuoteId(common::CorrelationId::new()),
+            transaction_id: TransactionId(common::CorrelationId::new()),
+            payer: Payer {
+                party_id_info: PartyIdInfo {
+                    fsp_id: payer_fsp.clone(),
+                    party_id_type: PartyIdType::Msisdn,
+                    party_identifier: "1234567890".to_string(),
+                },
+                personal_info: PersonalInfo {
+                    complex_name: ComplexName {
+                        first_name: "Mats".to_string(),
+                        last_name: "Hagman".to_string(),
+                    },
+                },
+            },
+            payee: Payee {
+                party_id_info: PartyIdInfo {
+                    fsp_id: payee_fsp.clone(),
+                    party_id_type: PartyIdType::Msisdn,
+                    party_identifier: "1234567890".to_string(),
+                },
+            },
+            amount_type: AmountType::Send,
+            amount: common::Money {
+                currency,
+                amount,
+            },
+            transaction_type: TransactionType {
+                scenario: Scenario::Transfer,
+                initiator: Initiator::Payer,
+                initiator_type: InitiatorType::Consumer,
+            },
+            note: "Created by fspiox-api".to_string(),
+            expiration: common::DateTime(Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap()),
+        }
+
+    }
+}
+
+pub struct QuoteRequest(pub FspiopRequest);
+
+impl QuoteRequest {
+    pub fn new(
+        payer_fsp: FspId,
+        payee_fsp: FspId,
+        amount: Amount,
+        currency: Currency,
+    ) -> QuoteRequest {
+        QuoteRequest(
+            FspiopRequest {
+                source: payer_fsp.clone(),
+                destination: payee_fsp.clone(),
+                path: "/quotes".parse::<http::Uri>().unwrap(), // TODO: we can make this infall
+                resource: FspiopResource::Quotes,
+                method: FspiopMethod::POST,
+                request_api_version: ApiVersion::V1pt0,
+                accept_api_versions: vec![ApiVersion::V1pt0],
+                date: Some(Utc::now()),
+                body: FspiopRequestBody::PostQuotes(QuoteRequestBody::generate(
+                    payer_fsp, payee_fsp, amount, currency
+                )),
+            }
+        )
+    }
 }
