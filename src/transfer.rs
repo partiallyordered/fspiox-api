@@ -219,6 +219,7 @@ impl TransferFulfilRequestBody {
     }
 }
 
+#[derive(Debug)]
 pub struct TransferFulfilRequest(pub FspiopRequest);
 
 impl TransferFulfilRequest {
@@ -239,6 +240,7 @@ impl TransferFulfilRequest {
     }
 }
 
+#[derive(Debug)]
 pub struct TransferPrepareRequest(pub FspiopRequest);
 
 impl TransferPrepareRequest {

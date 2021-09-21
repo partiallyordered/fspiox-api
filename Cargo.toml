@@ -29,4 +29,4 @@ tokio = { version = "1.6.1", features = ["full"], optional = true }
 [features]
 fsp_http = ["hyper", "url"]
 typescript_types = ["ts-rs"]
-services = ["tokio"]
+clients = ["tokio", "fsp_http"]
