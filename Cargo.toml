@@ -25,8 +25,9 @@ hyper = { version = "0.14", optional = true, features = ["client", "http1"] }
 url = { version = "2", optional = true }
 ts-rs = { git = "https://github.com/Aleph-Alpha/ts-rs", rev = "ddd461522591a90b987b22dd05e06cfccbea6f5a", optional = true }
 tokio = { version = "1.6.1", features = ["full"], optional = true }
+async-trait = { version = "0.1", optional = true }
 
 [features]
 fsp_http = ["hyper", "url"]
 typescript_types = ["ts-rs"]
-clients = ["tokio", "fsp_http"]
+clients = ["tokio", "fsp_http", "async-trait"]
