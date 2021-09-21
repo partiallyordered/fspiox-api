@@ -7,9 +7,8 @@ use http;
 #[cfg(feature = "fsp_http")]
 use http_serde;
 use serde::{Deserialize, Serialize};
-// use serde::de::DeserializeOwned;
-#[cfg(feature = "services")]
-pub mod services;
+#[cfg(feature = "clients")]
+pub mod clients;
 pub mod transfer;
 pub mod quote;
 mod common;

@@ -13,3 +13,4 @@ hindrance.
 - Replace usage of derive_more with strum?
 - Logging feature
 - Put postgres ToSql usage behind a feature
+- If possible, compile with various feature combinations in CI
