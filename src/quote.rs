@@ -173,7 +173,7 @@ impl QuoteRequest {
             FspiopRequest {
                 source: payer_fsp.clone(),
                 destination: payee_fsp.clone(),
-                path: "/quotes".parse::<http::Uri>().unwrap(), // TODO: we can make this infall
+                path: "/quotes".parse::<http::Uri>().unwrap(), // TODO: we can make this infallible
                 resource: FspiopResource::Quotes,
                 method: FspiopMethod::POST,
                 request_api_version: ApiVersion::V1pt0,

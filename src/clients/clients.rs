@@ -28,7 +28,7 @@ pub mod k8s {
 
     #[derive(Debug, Clone)]
     pub enum Port {
-        Name(String),
+        Name(&'static str),
         Number(i32),
     }
 
