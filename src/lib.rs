@@ -106,7 +106,7 @@ pub struct FspiopRequest {
     // existed, http::uri::Path). It might in fact be best if we wrote our own type here, as the
     // path goes into an HTTP header, which means it must be ascii bytes between 32 and 255
     // excluding 127/DEL, IIRC. We should create a type that can represent only this data.
-    #[cfg_attr(feature = "fsp_http", serde(with = "http_serde::uri"))]
+    #[serde(with = "http_serde::uri")]
     pub path: http::Uri,
     // TODO:
     // - X-Forwarded-For
