@@ -113,6 +113,7 @@ pub struct QuoteRequestBody {
     pub expiration: DateTime,
 }
 
+// TODO: this is pretty rubbish
 impl QuoteRequestBody {
     pub fn generate(
         payer_fsp: FspId,
