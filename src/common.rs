@@ -140,6 +140,7 @@ impl TS for FspId {
 
     fn transparent() -> bool { false }
 
+    // TODO: needs to have a size limit somehow
     fn decl() -> String {
         "type FspId = string".to_string()
     }
