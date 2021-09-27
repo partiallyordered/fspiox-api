@@ -1,8 +1,39 @@
+use serde::{Deserialize, Serialize, Serializer};
 use hyper::client::conn;
 use hyper::body::Body;
 use crate::ErrorResponse;
 #[cfg(feature = "clients-kube")]
 use async_trait::async_trait;
+
+// A type that deserializes from an empty string. Many Mojaloop APIs return an empty response, even
+// though as JSON they should return {} or [].
+#[derive(Debug, Clone, Copy)]
+pub struct NoBody;
+
+impl Serialize for NoBody {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str("")
+    }
+}
+
+impl<'de> Deserialize<'de> for NoBody {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> std::result::Result<NoBody, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if s.len() == 0 {
+            Ok(NoBody {})
+        } else {
+            Err(serde::de::Error::custom(format!("Expected empty response, received {}", s)))
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum Error {
@@ -15,6 +46,7 @@ pub enum Error {
     // FSPIOP API spec, or does it exist only in the _Mojaloop_ implementation of that spec?
     MojaloopApiError(ErrorResponse),
     InvalidResponseBody(String),
+    FailureToDeserializeResponseBody(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -88,8 +120,15 @@ pub mod k8s {
     }
 }
 
-pub(super) async fn client_send(sender: &mut conn::SendRequest<Body>, msg: crate::FspiopRequest) -> Result<()> {
-    let resp = sender.send_request(msg.into()).await
+pub async fn request<ReqBody, RespBody>(
+    sender: &mut conn::SendRequest<Body>,
+    msg: ReqBody,
+) -> Result<RespBody> where
+    ReqBody: std::fmt::Debug + Clone,
+    RespBody: serde::de::DeserializeOwned,
+    http::Request<hyper::Body>: From<ReqBody>,
+{
+    let resp = sender.send_request(msg.clone().into()).await
         .map_err(|e| Error::ConnectionError(format!("{}", e)))?;
 
     // Got the response okay, need to check if we have an ML API error
@@ -98,9 +137,20 @@ pub(super) async fn client_send(sender: &mut conn::SendRequest<Body>, msg: crate
     let body_bytes = hyper::body::to_bytes(body).await
         .map_err(|e| Error::ConnectionError(format!("{}", e)))?;
 
-    // In case of an HTTP error response (response code > 399), attempt to deserialize a
-    // Mojaloop API error from the response.
-    if !parts.status.is_success() {
+    if parts.status.is_success() {
+        serde_json::from_slice::<RespBody>(&body_bytes).map_err(|e|
+            Error::FailureToDeserializeResponseBody(
+                format!(
+                    "Failed to deserialize FSPIOP response from request {:?}. Error: {}. Body: {}.",
+                    msg,
+                    e,
+                    std::str::from_utf8(&body_bytes).unwrap(),
+                )
+            )
+        )
+    } else {
+        // In case of an HTTP error response (response code > 399), attempt to deserialize a
+        // Mojaloop API error from the response.
         serde_json::from_slice::<ErrorResponse>(&body_bytes)
             .map_or_else(
                 |e| Err(Error::InvalidResponseBody(
@@ -113,10 +163,8 @@ pub(super) async fn client_send(sender: &mut conn::SendRequest<Body>, msg: crate
                     )
                 ),
                 |ml_api_err| Err(Error::MojaloopApiError(ml_api_err))
-            )?
+            )
     }
-
-    Ok(())
 }
 
 #[cfg_attr(feature = "clients-kube", async_trait)]
