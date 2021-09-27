@@ -100,6 +100,10 @@ impl CorrelationId {
 //       In terms of alphanumeric characters, it's probably best if we can, if possible, make
 //       invalid FspId values unrepresentable. This means making the FspId type a newtype and
 //       implementing Serialize, Deserialize, FromStr, probably ToString etc.
+// TODO: is there any reason to use ArrayString<30> instead of a fixed-length character array? The
+//       FSP ID has to go in an HTTP header which means that it may only contain ASCII characters
+//       in the set [32,255] / 127 (i.e. printable ASCII characters, I think). Therefore it could
+//       be defined as a 30 character fixed length array of characters, if that's useful.
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, Hash, PartialEq, Eq, Display)]
 pub struct FspId(arrayvec::ArrayString<30>);
 

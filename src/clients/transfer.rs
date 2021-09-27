@@ -38,10 +38,10 @@ impl FspiopClient for Client {
 }
 
 impl Client {
-    pub async fn send(&mut self, msg: Request) -> Result<()> {
+    pub async fn send(&mut self, msg: Request) -> Result<NoBody> {
         match msg {
-            Request::TransferFulfil(m) => client_send(&mut self.sender, m.0).await,
-            Request::TransferPrepare(m) => client_send(&mut self.sender, m.0).await,
+            Request::TransferFulfil(m) => request(&mut self.sender, m.0).await,
+            Request::TransferPrepare(m) => request(&mut self.sender, m.0).await,
         }
     }
 }

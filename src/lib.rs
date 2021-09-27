@@ -31,7 +31,7 @@ pub enum ApiResourceType {
     BulkTransfers,
 }
 
-#[derive(Debug, Serialize, Deserialize, derive_more::Display)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, derive_more::Display)]
 pub enum ApiVersion {
     #[display(fmt = "1.0")]
     V1pt0,
@@ -39,7 +39,7 @@ pub enum ApiVersion {
     V1pt1,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum FspiopRequestBody {
     TransferFulfil (transfer::TransferFulfilRequestBody),
@@ -48,7 +48,7 @@ pub enum FspiopRequestBody {
     NoBody,
 }
 
-#[derive(Debug, Deserialize, Serialize, strum_macros::ToString)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, strum_macros::ToString)]
 pub enum FspiopMethod {
     GET,
     PUT,
@@ -68,7 +68,7 @@ impl From<FspiopMethod> for http::Method {
 }
 
 // https://github.com/mojaloop/mojaloop-specification/blob/7d8e1be6bb131a0142dc47e3d5acbb5a3f1655c7/fspiop-api/documents/API-Definition_v1.1.md#3133-path
-#[derive(Debug, Deserialize, Serialize, strum_macros::Display)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, strum_macros::Display)]
 #[strum(serialize_all = "camelCase")]
 pub enum FspiopResource {
     Participants,
@@ -87,7 +87,7 @@ pub enum FspiopResource {
 // example, it is possible to specify `resource_type: Quotes` and `body:
 // TransferPrepareRequestBody`. It's probably best to simply derive the former from the latter
 // with pattern matching.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FspiopRequest {
     pub request_api_version: ApiVersion,
     pub accept_api_versions: Vec<ApiVersion>,
@@ -227,7 +227,7 @@ pub fn build_post_quotes(
 }
 
 #[cfg(feature = "fsp_http")]
-impl From<FspiopRequest> for hyper::Request<hyper::body::Body> {
+impl From<FspiopRequest> for http::Request<hyper::body::Body> {
     fn from(req: FspiopRequest) -> hyper::Request<hyper::body::Body> {
         // For now, matching on method to build the body (or not) seems to be working. If it breaks
         // down, it should be possible to match on the body type. I.e.
