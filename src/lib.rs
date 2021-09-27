@@ -168,64 +168,6 @@ pub fn to_http_request(
     )
 }
 
-// TODO: probably move this to the transfer crate, and everything else it depends on to the common
-// crate
-pub fn build_post_quotes(
-    payer_fsp: common::FspId,
-    payee_fsp: common::FspId,
-    amount: common::Amount,
-    currency: common::Currency,
-) -> FspiopRequest {
-    FspiopRequest {
-        source: payer_fsp.clone(),
-        destination: payee_fsp.clone(),
-        path: "/quotes".parse::<http::Uri>().unwrap(), // TODO: we can make this infall
-        resource: FspiopResource::Quotes,
-        method: FspiopMethod::POST,
-        request_api_version: ApiVersion::V1pt0,
-        accept_api_versions: vec![ApiVersion::V1pt0],
-        date: Some(Utc::now()),
-        body: FspiopRequestBody::PostQuotes(
-            quote::QuoteRequestBody {
-                quote_id: quote::QuoteId(common::CorrelationId::new()),
-                transaction_id: quote::TransactionId(common::CorrelationId::new()),
-                payer: quote::Payer {
-                    party_id_info: quote::PartyIdInfo {
-                        fsp_id: payer_fsp.clone(),
-                        party_id_type: quote::PartyIdType::Msisdn,
-                        party_identifier: "1234567890".to_string(),
-                    },
-                    personal_info: quote::PersonalInfo {
-                        complex_name: quote::ComplexName {
-                            first_name: "Mats".to_string(),
-                            last_name: "Hagman".to_string(),
-                        },
-                    },
-                },
-                payee: quote::Payee {
-                    party_id_info: quote::PartyIdInfo {
-                        fsp_id: payee_fsp.clone(),
-                        party_id_type: quote::PartyIdType::Msisdn,
-                        party_identifier: "1234567890".to_string(),
-                    },
-                },
-                amount_type: quote::AmountType::Send,
-                amount: common::Money {
-                    currency,
-                    amount,
-                },
-                transaction_type: quote::TransactionType {
-                    scenario: quote::Scenario::Transfer,
-                    initiator: quote::Initiator::Payer,
-                    initiator_type: quote::InitiatorType::Consumer,
-                },
-                note: "Created by fspiox-api".to_string(),
-                expiration: common::DateTime(Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap()),
-            }
-        )
-    }
-}
-
 #[cfg(feature = "fsp_http")]
 impl From<FspiopRequest> for http::Request<hyper::body::Body> {
     fn from(req: FspiopRequest) -> hyper::Request<hyper::body::Body> {
