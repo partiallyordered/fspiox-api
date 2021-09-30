@@ -44,9 +44,10 @@ impl FspiopClient for Client {
 }
 
 impl Client {
-    pub async fn send(&mut self, msg: Request) -> Result<NoBody> {
+    pub async fn send(&mut self, msg: Request) -> Result<()> {
+        use crate::FspiopRequest;
         match msg {
-            Request::QuoteRequest(m) => request(&mut self.sender, m.0).await,
+            Request::QuoteRequest(m) => request::<FspiopRequest, NoBody>(&mut self.sender, m.0).await.and(Ok(())),
         }
     }
 }
