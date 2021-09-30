@@ -4,9 +4,12 @@ use hyper::body::Body;
 use crate::ErrorResponse;
 #[cfg(feature = "clients-kube")]
 use async_trait::async_trait;
+use kube::api::Api;
+use k8s_openapi::api::core::v1::Pod;
+use thiserror::Error;
 
-// A type that deserializes from an empty string. Many Mojaloop APIs return an empty response, even
-// though as JSON they should return {} or [].
+// A type that deserializes from and to an empty string. Many Mojaloop APIs expect and return an
+// empty response, even though as JSON they should accept and return {} or [].
 #[derive(Debug, Clone, Copy)]
 pub struct NoBody;
 
@@ -35,18 +38,22 @@ impl<'de> Deserialize<'de> for NoBody {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
     #[cfg(feature = "clients-kube")]
+    #[error("{0}")]
     KubernetesError(k8s::Error),
 
-    ConnectError(String),
-    ConnectionError(String),
+    #[error("Error in client HTTP connection: {0}")]
+    HttpConnectionError(String),
     // TODO: is this an FSPIOP API error, or a Mojaloop error? I.e. is this type defined in the
     // FSPIOP API spec, or does it exist only in the _Mojaloop_ implementation of that spec?
+    #[error("Unhandled error parsing FSPIOP API error out of response {1}. Response: {0}")]
+    InvalidResponseBody(String, String),
+    #[error("Mojaloop API error response returned: {0}")]
     MojaloopApiError(ErrorResponse),
-    InvalidResponseBody(String),
-    FailureToDeserializeResponseBody(String),
+    #[error("Failed to deserialize FSPIOP response from request {0}. Error: {1}. Body: {2}.")]
+    FailureToDeserializeResponseBody(String, String, String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -57,22 +64,33 @@ pub mod k8s {
     use k8s_openapi::api::core::v1::Pod;
     use super::Result;
     use std::convert::TryFrom;
+    use thiserror::Error;
+    use derive_more::Display;
+    use crate::clients::{transfer, quote, FspiopClient};
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Display)]
     pub enum Port {
         Name(&'static str),
         Number(i32),
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Error)]
     pub enum Error {
+        #[error("Unable to load kubeconfig file: {0}")]
         UnableToLoadKubeconfig(String),
+        #[error("Unable to find service port {0} on container {1}")]
         ServicePortNotFound(Port, String),
+        #[error("Unable to retrieve pod list, possible connection error: {0}")]
         ClusterConnectionError(String),
+        #[error("Unable to find pod with label {0}")]
         PodNotFound(String),
-        UnexpectedPodImplementation(String),
+        #[error("Pod {0} does not appear to have a pod spec")]
+        PodSpecNotFound(String),
+        #[error("Pod {0} does not appear to contain a container {1}")]
         ServiceContainerNotFound(String, String),
+        #[error("Unable to establish port-forward: {0}")]
         FailedToEstablishPortForward(String),
+        #[error("Unable to establish HTTP connection over pod port-forward: {0}")]
         PortForwardHttpConnectionFailed(String),
     }
 
@@ -118,50 +136,80 @@ pub mod k8s {
             }
         )
     }
+
+    pub struct Clients {
+        pub transfer: transfer::Client,
+        pub quote: quote::Client,
+    }
+
+    pub async fn get_all_from_k8s(
+        kubeconfig: &Option<std::path::PathBuf>,
+        namespace: &Option<String>,
+        pods: Option<Api<Pod>>,
+    ) -> Result<Clients> {
+        let pods = match pods {
+            None => Some(get_pods(kubeconfig, namespace).await?),
+            pods => pods,
+        };
+        let (transfer, quote) = tokio::try_join!(
+            transfer::Client::from_k8s_params(kubeconfig, namespace, pods.clone()),
+            quote::Client::from_k8s_params(kubeconfig, namespace, pods),
+        )?;
+        Ok(Clients { transfer, quote })
+    }
+}
+
+#[derive(Debug)]
+pub struct ResponseBody<ReqBody: std::fmt::Debug, RespBody: serde::de::DeserializeOwned> {
+    body: hyper::Body,
+    req: ReqBody,
+    phantom: std::marker::PhantomData<RespBody>,
+}
+
+impl<ReqBody: std::fmt::Debug, RespBody: serde::de::DeserializeOwned> ResponseBody<ReqBody, RespBody> {
+    async fn des(self) -> Result<RespBody> {
+        let ResponseBody { body, req, .. } = self;
+        let body_bytes = hyper::body::to_bytes(body).await
+            .map_err(|e| Error::HttpConnectionError(e.to_string()))?;
+        serde_json::from_slice::<RespBody>(&body_bytes).map_err(|e|
+            Error::FailureToDeserializeResponseBody(
+                format!("{:?}", req).to_string(),
+                e.to_string(),
+                std::str::from_utf8(&body_bytes).unwrap().to_string(),
+            )
+        )
+    }
 }
 
 pub async fn request<ReqBody, RespBody>(
     sender: &mut conn::SendRequest<Body>,
     msg: ReqBody,
-) -> Result<RespBody> where
+) -> Result<ResponseBody<ReqBody, RespBody>> where
     ReqBody: std::fmt::Debug + Clone,
     RespBody: serde::de::DeserializeOwned,
     http::Request<hyper::Body>: From<ReqBody>,
 {
     let resp = sender.send_request(msg.clone().into()).await
-        .map_err(|e| Error::ConnectionError(format!("{}", e)))?;
+        .map_err(|e| Error::HttpConnectionError(e.to_string()))?;
 
     // Got the response okay, need to check if we have an ML API error
     let (parts, body) = resp.into_parts();
 
-    let body_bytes = hyper::body::to_bytes(body).await
-        .map_err(|e| Error::ConnectionError(format!("{}", e)))?;
-
     if parts.status.is_success() {
-        serde_json::from_slice::<RespBody>(&body_bytes).map_err(|e|
-            Error::FailureToDeserializeResponseBody(
-                format!(
-                    "Failed to deserialize FSPIOP response from request {:?}. Error: {}. Body: {}.",
-                    msg,
-                    e,
-                    std::str::from_utf8(&body_bytes).unwrap(),
-                )
-            )
-        )
+        Ok(ResponseBody { req: msg, body, phantom: std::marker::PhantomData::<RespBody> })
     } else {
+        let body_bytes = hyper::body::to_bytes(body).await
+            .map_err(|e| Error::HttpConnectionError(e.to_string()))?;
         // In case of an HTTP error response (response code > 399), attempt to deserialize a
         // Mojaloop API error from the response.
         serde_json::from_slice::<ErrorResponse>(&body_bytes)
             .map_or_else(
                 |e| Err(Error::InvalidResponseBody(
-                        format!(
-                            // TODO: is this an FSPIOP API error, or a Mojaloop error?
-                            "Unhandled error parsing FSPIOP API error out of response {} {}",
-                            std::str::from_utf8(&body_bytes).unwrap(),
-                            e,
-                        )
+                        std::str::from_utf8(&body_bytes).unwrap().to_string(),
+                        e.to_string(),
                     )
                 ),
+                // TODO: is this an FSPIOP API error, or a Mojaloop error?
                 |ml_api_err| Err(Error::MojaloopApiError(ml_api_err))
             )
     }
@@ -175,15 +223,25 @@ pub trait FspiopClient: Sized {
     const K8S_PARAMS: k8s::KubernetesParams;
 
     #[cfg(feature = "clients-kube")]
+    async fn from_k8s_defaults() -> Result<Self> {
+        Self::from_k8s_params(&None, &None, None).await
+    }
+
+    #[cfg(feature = "clients-kube")]
     async fn from_k8s_params(
         kubeconfig: &Option<std::path::PathBuf>,
         namespace: &Option<String>,
+        pods: Option<Api<Pod>>,
     ) -> Result<Self> {
         use k8s::{get_pods, Port, KubernetesParams, Error};
         use kube::api::ListParams;
         use std::convert::TryInto;
 
-        let pods = get_pods(kubeconfig, namespace).await?;
+        // TODO: memoize get_pods? Just take it as a parameter? Optional?
+        let pods = match pods {
+            Some(pods) => pods,
+            None => get_pods(kubeconfig, namespace).await?
+        };
         let KubernetesParams { label, container_name, port } = Self::K8S_PARAMS;
         let lp = ListParams::default().labels(&label);
         let pod = pods
@@ -192,9 +250,9 @@ pub trait FspiopClient: Sized {
         let pod_name = pod.metadata.name.clone().unwrap();
         let pod_port = pod
             .spec
-            .ok_or(Error::UnexpectedPodImplementation(pod_name.clone()))?
+            .ok_or(Error::PodSpecNotFound(pod_name.clone()))?
             .containers.iter().find(|c| c.name == container_name)
-            .ok_or(Error::ServiceContainerNotFound(container_name.to_string(), pod_name.clone()))?
+            .ok_or(Error::ServiceContainerNotFound(pod_name.clone(), container_name.to_string()))?
             .ports.as_ref().ok_or(Error::ServicePortNotFound(port.clone(), container_name.to_string()))?
             .iter()
             .find(|p| {

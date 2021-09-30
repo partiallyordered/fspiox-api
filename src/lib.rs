@@ -45,6 +45,8 @@ pub enum FspiopRequestBody {
     TransferFulfil (transfer::TransferFulfilRequestBody),
     TransferPrepare (transfer::TransferPrepareRequestBody),
     PostQuotes (quote::QuoteRequestBody),
+    // TODO: is this necessary still? Is it used anywhere? Should it instead be represented by an
+    // Option type? I.e. body: Option<FspiopRequestBody> ?
     NoBody,
 }
 
@@ -87,6 +89,7 @@ pub enum FspiopResource {
 // example, it is possible to specify `resource_type: Quotes` and `body:
 // TransferPrepareRequestBody`. It's probably best to simply derive the former from the latter
 // with pattern matching.
+// TODO: derive Copy? Or maybe just Sized?
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FspiopRequest {
     pub request_api_version: ApiVersion,
@@ -116,6 +119,7 @@ pub struct FspiopRequest {
     // See: https://github.com/mojaloop/mojaloop-specification/blob/d9393fa490ec825689ea5f325ac38e97d06956cf/fspiop-api/documents/API%20Definition%20v1.1.md#3211-http-request-header-fields
 }
 
+// TODO: is this in use anywhere? We should at least replace it with From/Into.
 #[cfg(feature = "fsp_http")]
 pub fn to_http_request(
     req: FspiopRequest,

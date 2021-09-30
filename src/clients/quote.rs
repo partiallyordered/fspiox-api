@@ -3,12 +3,20 @@ use hyper::body::Body;
 use crate::quote;
 use crate::clients::clients::*;
 
+#[derive(Debug)]
 pub struct Client {
     sender: conn::SendRequest<Body>,
 }
 
+#[derive(Debug)]
 pub enum Request {
     QuoteRequest(quote::QuoteRequest),
+}
+
+impl From<quote::QuoteRequest> for Request {
+    fn from(i: quote::QuoteRequest) -> Request {
+        Request::QuoteRequest(i)
+    }
 }
 
 impl From<Request> for http::Request<hyper::Body> {

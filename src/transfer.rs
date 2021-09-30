@@ -13,6 +13,7 @@ use chrono::Utc;
 #[cfg(feature = "typescript_types")]
 use ts_rs::TS;
 
+#[derive(Debug)]
 pub struct MlApiAdapterRequest(crate::FspiopRequest);
 
 // ^[A-Za-z0-9-_]{43}$
