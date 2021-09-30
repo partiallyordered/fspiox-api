@@ -52,8 +52,8 @@ pub enum Error {
     InvalidResponseBody(String, String),
     #[error("Mojaloop API error response returned: {0}")]
     MojaloopApiError(ErrorResponse),
-    #[error("Failed to deserialize FSPIOP response from request {0}. Error: {1}. Body: {2}.")]
-    FailureToDeserializeResponseBody(String, String, String),
+    #[error("Failed to deserialize FSPIOP response. Error: {0}. Body: {1}.")]
+    FailureToDeserializeResponseBody(String, String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -160,20 +160,18 @@ pub mod k8s {
 }
 
 #[derive(Debug)]
-pub struct ResponseBody<ReqBody: std::fmt::Debug, RespBody: serde::de::DeserializeOwned> {
+pub struct ResponseBody<RespBody: serde::de::DeserializeOwned> {
     body: hyper::Body,
-    req: ReqBody,
     phantom: std::marker::PhantomData<RespBody>,
 }
 
-impl<ReqBody: std::fmt::Debug, RespBody: serde::de::DeserializeOwned> ResponseBody<ReqBody, RespBody> {
-    async fn des(self) -> Result<RespBody> {
-        let ResponseBody { body, req, .. } = self;
+impl<RespBody: serde::de::DeserializeOwned> ResponseBody<RespBody> {
+    pub async fn des(self) -> Result<RespBody> {
+        let ResponseBody { body, .. } = self;
         let body_bytes = hyper::body::to_bytes(body).await
             .map_err(|e| Error::HttpConnectionError(e.to_string()))?;
         serde_json::from_slice::<RespBody>(&body_bytes).map_err(|e|
             Error::FailureToDeserializeResponseBody(
-                format!("{:?}", req).to_string(),
                 e.to_string(),
                 std::str::from_utf8(&body_bytes).unwrap().to_string(),
             )
@@ -181,10 +179,12 @@ impl<ReqBody: std::fmt::Debug, RespBody: serde::de::DeserializeOwned> ResponseBo
     }
 }
 
+// TODO: could have some request_no_body for no-body responses, so it's not possible for the user
+// to request a body from a response that shouldn't contain one. And get rid of NoBody?
 pub async fn request<ReqBody, RespBody>(
     sender: &mut conn::SendRequest<Body>,
     msg: ReqBody,
-) -> Result<ResponseBody<ReqBody, RespBody>> where
+) -> Result<ResponseBody<RespBody>> where
     ReqBody: std::fmt::Debug + Clone,
     RespBody: serde::de::DeserializeOwned,
     http::Request<hyper::Body>: From<ReqBody>,
@@ -196,7 +196,7 @@ pub async fn request<ReqBody, RespBody>(
     let (parts, body) = resp.into_parts();
 
     if parts.status.is_success() {
-        Ok(ResponseBody { req: msg, body, phantom: std::marker::PhantomData::<RespBody> })
+        Ok(ResponseBody { body, phantom: std::marker::PhantomData::<RespBody> })
     } else {
         let body_bytes = hyper::body::to_bytes(body).await
             .map_err(|e| Error::HttpConnectionError(e.to_string()))?;

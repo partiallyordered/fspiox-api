@@ -52,10 +52,11 @@ impl FspiopClient for Client {
 }
 
 impl Client {
-    pub async fn send(&mut self, msg: Request) -> Result<ResponseBody<NoBody>> {
+    pub async fn send(&mut self, msg: Request) -> Result<()> {
+        use crate::FspiopRequest;
         match msg {
-            Request::TransferFulfil(m) => request(&mut self.sender, m.0).await,
-            Request::TransferPrepare(m) => request(&mut self.sender, m.0).await,
+            Request::TransferFulfil(m) => request::<FspiopRequest, NoBody>(&mut self.sender, m.0).await.and(Ok(())),
+            Request::TransferPrepare(m) => request::<FspiopRequest, NoBody>(&mut self.sender, m.0).await.and(Ok(())),
         }
     }
 }
