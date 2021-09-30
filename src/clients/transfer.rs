@@ -3,13 +3,27 @@ use hyper::body::Body;
 use crate::transfer;
 use crate::clients::clients::*;
 
+#[derive(Debug)]
 pub struct Client {
     sender: conn::SendRequest<Body>,
 }
 
+#[derive(Debug)]
 pub enum Request {
     TransferPrepare(transfer::TransferPrepareRequest),
     TransferFulfil(transfer::TransferFulfilRequest),
+}
+
+impl From<transfer::TransferPrepareRequest> for Request {
+    fn from(i: transfer::TransferPrepareRequest) -> Request {
+        Request::TransferPrepare(i)
+    }
+}
+
+impl From<transfer::TransferFulfilRequest> for Request {
+    fn from(i: transfer::TransferFulfilRequest) -> Request {
+        Request::TransferFulfil(i)
+    }
 }
 
 impl From<Request> for http::Request<hyper::Body> {
@@ -38,7 +52,7 @@ impl FspiopClient for Client {
 }
 
 impl Client {
-    pub async fn send(&mut self, msg: Request) -> Result<NoBody> {
+    pub async fn send(&mut self, msg: Request) -> Result<ResponseBody<NoBody>> {
         match msg {
             Request::TransferFulfil(m) => request(&mut self.sender, m.0).await,
             Request::TransferPrepare(m) => request(&mut self.sender, m.0).await,

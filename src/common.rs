@@ -568,6 +568,8 @@ pub enum MojaloopApiError {
 pub struct ErrorInformation {
     // TODO:
     pub error_code: MojaloopApiError,
+    // TODO: error_description is allowed to be up to 128 UTF-8 chars, allegedly. Double-check
+    // this, then modify the type.
     pub error_description: String,
 }
 

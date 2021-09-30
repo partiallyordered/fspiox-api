@@ -7,6 +7,9 @@ serialise to use the same attribute names and cases. Where not present, it will 
 hindrance.
 
 ### TODO:
+- Create client pools
+  - Use: https://github.com/bikeshedder/deadpool ?
+  - Note: https://github.com/bikeshedder/deadpool#differences-to-other-connection-pool-implementations
 - Search all uses of .unwrap and other panics, document whether and why they're valid, or fix them
 - Split types into a separate crate from all functions/impls? Is this just a nuisance?
 - Rustdoc
