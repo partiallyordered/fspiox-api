@@ -157,6 +157,52 @@ pub mod k8s {
         )?;
         Ok(Clients { transfer, quote })
     }
+
+    pub async fn port_forward_stream(
+        kubeconfig: &Option<std::path::PathBuf>,
+        namespace: &Option<String>,
+        pods: Option<Api<Pod>>,
+        params: KubernetesParams,
+    ) -> Result<(impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin)> {
+        use kube::api::ListParams;
+        use std::convert::TryInto;
+
+        let KubernetesParams { label, container_name, port } = params;
+
+        // TODO: memoize get_pods? Just take it as a parameter? Optional?
+        let pods = match pods {
+            Some(pods) => pods,
+            None => get_pods(kubeconfig, namespace).await?
+        };
+        let lp = ListParams::default().labels(&label);
+        let pod = pods
+            .list(&lp).await.map_err(|e| Error::ClusterConnectionError(e.to_string()))?
+            .items.get(0).ok_or(Error::PodNotFound(label.to_string()))?.clone();
+        let pod_name = pod.metadata.name.clone().unwrap();
+        let pod_port = pod
+            .spec
+            .ok_or(Error::PodSpecNotFound(pod_name.clone()))?
+            .containers.iter().find(|c| c.name == container_name)
+            .ok_or(Error::ServiceContainerNotFound(pod_name.clone(), container_name.to_string()))?
+            .ports.as_ref().ok_or(Error::ServicePortNotFound(port.clone(), container_name.to_string()))?
+            .iter()
+            .find(|p| {
+                match &port {
+                    Port::Name(port_name) => p.name.as_ref().map_or(false, |name| name == port_name),
+                    Port::Number(port_num) => p.container_port == *port_num,
+                }
+            })
+            .ok_or(Error::ServicePortNotFound(port, container_name.to_string()))?.clone();
+
+        // TODO: somehow, when establishing port-forward fails because the pod is still coming up, this
+        // doesn't cause the application to fail.
+        let mut pf = pods.portforward(
+            &pod_name,
+            &[pod_port.container_port.try_into().unwrap()]
+        ).await.map_err(|e| Error::FailedToEstablishPortForward(e.to_string()))?;
+        let mut ports = pf.ports().unwrap();
+        Ok(ports[0].stream().unwrap())
+    }
 }
 
 #[derive(Debug)]
@@ -233,46 +279,15 @@ pub trait FspiopClient: Sized {
         namespace: &Option<String>,
         pods: Option<Api<Pod>>,
     ) -> Result<Self> {
-        use k8s::{get_pods, Port, KubernetesParams, Error};
-        use kube::api::ListParams;
-        use std::convert::TryInto;
+        let stream = k8s::port_forward_stream(
+            kubeconfig,
+            namespace,
+            pods,
+            Self::K8S_PARAMS,
+        ).await?;
 
-        // TODO: memoize get_pods? Just take it as a parameter? Optional?
-        let pods = match pods {
-            Some(pods) => pods,
-            None => get_pods(kubeconfig, namespace).await?
-        };
-        let KubernetesParams { label, container_name, port } = Self::K8S_PARAMS;
-        let lp = ListParams::default().labels(&label);
-        let pod = pods
-            .list(&lp).await.map_err(|e| Error::ClusterConnectionError(e.to_string()))?
-            .items.get(0).ok_or(Error::PodNotFound(label.to_string()))?.clone();
-        let pod_name = pod.metadata.name.clone().unwrap();
-        let pod_port = pod
-            .spec
-            .ok_or(Error::PodSpecNotFound(pod_name.clone()))?
-            .containers.iter().find(|c| c.name == container_name)
-            .ok_or(Error::ServiceContainerNotFound(pod_name.clone(), container_name.to_string()))?
-            .ports.as_ref().ok_or(Error::ServicePortNotFound(port.clone(), container_name.to_string()))?
-            .iter()
-            .find(|p| {
-                match &port {
-                    Port::Name(port_name) => p.name.as_ref().map_or(false, |name| name == port_name),
-                    Port::Number(port_num) => p.container_port == *port_num,
-                }
-            })
-            .ok_or(Error::ServicePortNotFound(port, container_name.to_string()))?.clone();
-
-        // TODO: somehow, when establishing port-forward fails because the pod is still coming up, this
-        // doesn't cause the application to fail.
-        let mut pf = pods.portforward(
-            &pod_name,
-            &[pod_port.container_port.try_into().unwrap()]
-        ).await.map_err(|e| Error::FailedToEstablishPortForward(e.to_string()))?;
-        let mut ports = pf.ports().unwrap();
-        let result = ports[0].stream().unwrap();
-        let (sender, connection) = conn::Builder::new().handshake(result).await
-            .map_err(|e| Error::PortForwardHttpConnectionFailed(e.to_string()))?;
+        let (sender, connection) = conn::Builder::new().handshake(stream).await
+            .map_err(|e| k8s::Error::PortForwardHttpConnectionFailed(e.to_string()))?;
 
         // spawn a task to poll the connection and drive the HTTP state
         tokio::spawn(async move {
