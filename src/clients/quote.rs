@@ -8,25 +8,6 @@ pub struct Client {
     sender: conn::SendRequest<Body>,
 }
 
-#[derive(Debug)]
-pub enum Request {
-    QuoteRequest(quote::QuoteRequest),
-}
-
-impl From<quote::QuoteRequest> for Request {
-    fn from(i: quote::QuoteRequest) -> Request {
-        Request::QuoteRequest(i)
-    }
-}
-
-impl From<Request> for http::Request<hyper::Body> {
-    fn from(item: Request) -> http::Request<hyper::Body> {
-        match item {
-            Request::QuoteRequest(i) => i.0.into(),
-        }
-    }
-}
-
 impl FspiopClient for Client {
     #[cfg(feature = "clients-kube")]
     const K8S_PARAMS: k8s::KubernetesParams =
@@ -43,11 +24,23 @@ impl FspiopClient for Client {
     }
 }
 
+impl From<quote::QuoteRequest> for http::Request<hyper::Body> {
+    fn from(item: quote::QuoteRequest) -> http::Request<hyper::Body> {
+        item.0.into()
+    }
+}
+
+pub trait QuoteRequest {}
+
+impl QuoteRequest for quote::QuoteRequest {}
+
 impl Client {
-    pub async fn send(&mut self, msg: Request) -> Result<()> {
-        use crate::FspiopRequest;
-        match msg {
-            Request::QuoteRequest(m) => request::<FspiopRequest, NoBody>(&mut self.sender, m.0).await.and(Ok(())),
-        }
+    pub async fn send<T: QuoteRequest>(&mut self, msg: T)
+        -> Result<()>
+    where
+        T: QuoteRequest + std::fmt::Debug + Clone,
+        http::Request<hyper::Body>: From<T>
+    {
+        request::<T, NoBody>(&mut self.sender, msg).await.and(Ok(()))
     }
 }

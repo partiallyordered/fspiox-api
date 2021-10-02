@@ -8,33 +8,6 @@ pub struct Client {
     sender: conn::SendRequest<Body>,
 }
 
-#[derive(Debug)]
-pub enum Request {
-    TransferPrepare(transfer::TransferPrepareRequest),
-    TransferFulfil(transfer::TransferFulfilRequest),
-}
-
-impl From<transfer::TransferPrepareRequest> for Request {
-    fn from(i: transfer::TransferPrepareRequest) -> Request {
-        Request::TransferPrepare(i)
-    }
-}
-
-impl From<transfer::TransferFulfilRequest> for Request {
-    fn from(i: transfer::TransferFulfilRequest) -> Request {
-        Request::TransferFulfil(i)
-    }
-}
-
-impl From<Request> for http::Request<hyper::Body> {
-    fn from(item: Request) -> http::Request<hyper::Body> {
-        match item {
-            Request::TransferFulfil(i) => i.0.into(),
-            Request::TransferPrepare(i) => i.0.into(),
-        }
-    }
-}
-
 impl FspiopClient for Client {
     #[cfg(feature = "clients-kube")]
     const K8S_PARAMS: k8s::KubernetesParams =
@@ -51,12 +24,30 @@ impl FspiopClient for Client {
     }
 }
 
+pub trait TransferRequest {}
+
+impl TransferRequest for transfer::TransferPrepareRequest {}
+impl TransferRequest for transfer::TransferFulfilRequest {}
+
+impl From<transfer::TransferFulfilRequest> for http::Request<hyper::Body> {
+    fn from(item: transfer::TransferFulfilRequest) -> http::Request<hyper::Body> {
+        item.0.into()
+    }
+}
+
+impl From<transfer::TransferPrepareRequest> for http::Request<hyper::Body> {
+    fn from(item: transfer::TransferPrepareRequest) -> http::Request<hyper::Body> {
+        item.0.into()
+    }
+}
+
 impl Client {
-    pub async fn send(&mut self, msg: Request) -> Result<()> {
-        use crate::FspiopRequest;
-        match msg {
-            Request::TransferFulfil(m) => request::<FspiopRequest, NoBody>(&mut self.sender, m.0).await.and(Ok(())),
-            Request::TransferPrepare(m) => request::<FspiopRequest, NoBody>(&mut self.sender, m.0).await.and(Ok(())),
-        }
+    pub async fn send<T: TransferRequest>(&mut self, msg: T)
+        -> Result<()>
+    where
+        T: TransferRequest + std::fmt::Debug + Clone,
+        http::Request<hyper::Body>: From<T>
+    {
+        request::<T, NoBody>(&mut self.sender, msg).await.and(Ok(()))
     }
 }

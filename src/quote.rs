@@ -161,7 +161,7 @@ impl QuoteRequestBody {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QuoteRequest(pub FspiopRequest);
 
 impl QuoteRequest {
