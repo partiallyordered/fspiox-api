@@ -2,11 +2,8 @@ use serde::{Deserialize, Serialize, Serializer};
 use hyper::client::conn;
 use hyper::body::Body;
 use crate::ErrorResponse;
-#[cfg(feature = "clients-kube")]
-use async_trait::async_trait;
-use kube::api::Api;
-use k8s_openapi::api::core::v1::Pod;
 use thiserror::Error;
+#[cfg(feature = "clients-kube")] use async_trait::async_trait;
 
 // A type that deserializes from and to an empty string. Many Mojaloop APIs expect and return an
 // empty response, even though as JSON they should accept and return {} or [].
@@ -63,7 +60,6 @@ pub mod k8s {
     use kube::{Client, api::Api};
     use k8s_openapi::api::core::v1::Pod;
     use super::Result;
-    use std::convert::TryFrom;
     use thiserror::Error;
     use derive_more::Display;
     use crate::clients::{transfer, quote, FspiopClient};
@@ -107,73 +103,51 @@ pub mod k8s {
         pub port: Port,
     }
 
-    pub async fn get_pods(
-        kubeconfig: &Option<std::path::PathBuf>,
-        namespace: &Option<String>,
-    ) -> Result<Api<Pod>> {
-        let client = match kubeconfig {
-            Some(path) => {
-                let custom_config = kube::config::Kubeconfig::read_from(path.as_path())
-                    .map_err(|e| Error::UnableToLoadKubeconfig(e.to_string()))?;
-                // TODO: expose some of this to the user?
-                let options = kube::config::KubeConfigOptions {
-                    context: None,
-                    cluster: None,
-                    user: None,
-                };
-                let config = kube::Config::from_custom_kubeconfig(custom_config, &options).await
-                    .map_err(|e| Error::UnableToLoadKubeconfig(e.to_string()))?;
-                Client::try_from(config)
-                    .map_err(|e| Error::UnableToLoadKubeconfig(e.to_string()))?
-            },
-            None => Client::try_default().await
-                .map_err(|e| Error::UnableToLoadKubeconfig(e.to_string()))?
-        };
-        Ok(
-            match namespace {
-                Some(ns) => Api::namespaced(client, &ns),
-                None => Api::default_namespaced(client),
-            }
-        )
-    }
-
     pub struct Clients {
         pub transfer: transfer::Client,
         pub quote: quote::Client,
     }
 
+    pub async fn ensure_client(
+        client: Option<kube::client::Client>,
+    ) -> Result<kube::Client> {
+        Ok(
+            match client {
+                Some(c) => c,
+                None => Client::try_default().await
+                    .map_err(|e| Error::UnableToLoadKubeconfig(e.to_string()))?
+            }
+        )
+    }
+
     pub async fn get_all_from_k8s(
-        kubeconfig: &Option<std::path::PathBuf>,
+        client: Option<kube::client::Client>,
         namespace: &Option<String>,
-        pods: Option<Api<Pod>>,
     ) -> Result<Clients> {
-        let pods = match pods {
-            None => Some(get_pods(kubeconfig, namespace).await?),
-            pods => pods,
-        };
+        let client = ensure_client(client).await?;
         let (transfer, quote) = tokio::try_join!(
-            transfer::Client::from_k8s_params(kubeconfig, namespace, pods.clone()),
-            quote::Client::from_k8s_params(kubeconfig, namespace, pods),
+            transfer::Client::from_k8s_params(Some(client.clone()), namespace),
+            quote::Client::from_k8s_params(Some(client), namespace),
         )?;
         Ok(Clients { transfer, quote })
     }
 
     pub async fn port_forward_stream(
-        kubeconfig: &Option<std::path::PathBuf>,
+        client: Option<kube::client::Client>,
         namespace: &Option<String>,
-        pods: Option<Api<Pod>>,
         params: KubernetesParams,
     ) -> Result<(impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin)> {
         use kube::api::ListParams;
         use std::convert::TryInto;
 
+        let client = ensure_client(client).await?;
+        let pods: kube::Api<Pod> = match namespace {
+            Some(ns) => Api::namespaced(client, ns),
+            None => Api::all(client),
+        };
+
         let KubernetesParams { label, container_name, port } = params;
 
-        // TODO: memoize get_pods? Just take it as a parameter? Optional?
-        let pods = match pods {
-            Some(pods) => pods,
-            None => get_pods(kubeconfig, namespace).await?
-        };
         let lp = ListParams::default().labels(&label);
         let pod = pods
             .list(&lp).await.map_err(|e| Error::ClusterConnectionError(e.to_string()))?
@@ -270,19 +244,17 @@ pub trait FspiopClient: Sized {
 
     #[cfg(feature = "clients-kube")]
     async fn from_k8s_defaults() -> Result<Self> {
-        Self::from_k8s_params(&None, &None, None).await
+        Self::from_k8s_params(None, &None).await
     }
 
     #[cfg(feature = "clients-kube")]
     async fn from_k8s_params(
-        kubeconfig: &Option<std::path::PathBuf>,
+        client: Option<kube::client::Client>,
         namespace: &Option<String>,
-        pods: Option<Api<Pod>>,
     ) -> Result<Self> {
         let stream = k8s::port_forward_stream(
-            kubeconfig,
+            client,
             namespace,
-            pods,
             Self::K8S_PARAMS,
         ).await?;
 
