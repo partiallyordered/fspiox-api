@@ -143,7 +143,7 @@ pub mod k8s {
         let client = ensure_client(client).await?;
         let pods: kube::Api<Pod> = match namespace {
             Some(ns) => Api::namespaced(client, ns),
-            None => Api::all(client),
+            None => Api::default_namespaced(client),
         };
 
         let KubernetesParams { label, container_name, port } = params;
