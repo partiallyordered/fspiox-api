@@ -93,6 +93,7 @@ impl TS for TransferId {
     fn transparent() -> bool { false }
 }
 
+#[cfg_attr(feature = "typescript_types", derive(TS))]
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferPrepareRequestBody {
