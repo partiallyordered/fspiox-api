@@ -260,7 +260,7 @@ impl TransferPrepareRequest {
                 destination: payer_fsp.clone(),
                 path: format!("/transfers/{}", id).parse::<http::Uri>().unwrap(),
                 resource: FspiopResource::Transfers,
-                method: FspiopMethod::PUT,
+                method: FspiopMethod::POST,
                 request_api_version: ApiVersion::V1pt0,
                 accept_api_versions: vec![ApiVersion::V1pt0],
                 date: Some(Utc::now()),

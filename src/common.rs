@@ -560,6 +560,10 @@ pub enum MojaloopApiError {
     PayeePermissionError,          // { code: "5300", message: "Payee permission error" },
     #[serde(rename = "5400")]
     GenericPayeeBlockedError,      // { code: "5400", message: "Generic Payee blocked error" }
+
+    // From: https://github.com/mojaloop/central-services-error-handling/blob/89125a3d9ff5969aa3df8a39057c8e413a330b82/src/enums.js#L134
+    #[serde(rename = "6000")]
+    GenericSettlementError,        // { code: "6000", message: "Generic Settlement Error" }
 }
 
 #[cfg_attr(feature = "typescript_types", derive(TS))]
