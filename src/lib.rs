@@ -184,6 +184,7 @@ impl From<FspiopRequest> for http::Request<hyper::body::Body> {
             FspiopMethod::GET => "".to_string(),
             // Cheeky: because we configured serde to serialize the FspiopRequestBody as untagged, the
             // result of to_string here will consist only of the actual request body.
+            // TODO: It might be better to implement From<FspiopRequestBody> for hyper::body::Body
             FspiopMethod::PUT | FspiopMethod::POST => serde_json::to_string(&req.body).unwrap(),
         };
         let accept = req.accept_api_versions

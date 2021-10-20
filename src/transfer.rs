@@ -256,11 +256,11 @@ impl TransferPrepareRequest {
         let id = id.unwrap_or(TransferId(CorrelationId::new()));
         TransferPrepareRequest(
             FspiopRequest {
-                source: payee_fsp.clone(),
-                destination: payer_fsp.clone(),
-                path: format!("/transfers/{}", id).parse::<http::Uri>().unwrap(),
+                source: payer_fsp.clone(),
+                destination: payee_fsp.clone(),
+                path: "/transfers".parse::<http::Uri>().unwrap(),
                 resource: FspiopResource::Transfers,
-                method: FspiopMethod::PUT,
+                method: FspiopMethod::POST,
                 request_api_version: ApiVersion::V1pt0,
                 accept_api_versions: vec![ApiVersion::V1pt0],
                 date: Some(Utc::now()),
