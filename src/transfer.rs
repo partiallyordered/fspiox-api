@@ -83,7 +83,7 @@ pub struct TransferId(pub CorrelationId);
 #[cfg(feature = "typescript_types")]
 impl TS for TransferId {
     fn name() -> String {
-        "string".to_string()
+        "TransferId".to_string()
     }
 
     fn dependencies() -> Vec<(std::any::TypeId, String)> {
@@ -91,6 +91,10 @@ impl TS for TransferId {
     }
 
     fn transparent() -> bool { false }
+
+    fn decl() -> String {
+        "type TransferId = string".to_string()
+    }
 }
 
 #[cfg_attr(feature = "typescript_types", derive(TS))]
