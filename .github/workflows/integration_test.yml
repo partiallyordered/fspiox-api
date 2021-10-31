@@ -8,7 +8,6 @@ on:
 jobs:
   integration_test:
     timeout-minutes: 45
-    needs: manifest_check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
