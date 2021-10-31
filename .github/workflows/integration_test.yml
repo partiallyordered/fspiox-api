@@ -39,7 +39,7 @@ jobs:
           int-test
 
     - name: Deploy
-      run: kustomize build 'github.com/partiallyordered/mojaloop-kustomize/base/mojaloop/central?ref=f15e5d949ca1f62a63feecbd44534e98b953a386'
+      run: kustomize build 'github.com/partiallyordered/mojaloop-kustomize/base/mojaloop/central?ref=f15e5d949ca1f62a63feecbd44534e98b953a386' | kubectl apply -f -
 
     - name: Wait for kube api server to process and create all resources
       # This is because the wait step that follows this one does this:
